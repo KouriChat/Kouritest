@@ -1,0 +1,19 @@
+﻿task,metric,kendall_tau,identical
+全球 2°,bf1,1.0,True
+全球 2°,iou_med,1.0,True
+全球 2°,nw,1.0,True
+北极航道 0.1°,bf1,0.6666666666666666,False
+北极航道 0.1°,iou_med,1.0,True
+北极航道 0.1°,nw,-1.0,False
+南海 0.2°,bf1,0.6666666666666666,False
+南海 0.2°,iou_med,1.0,True
+南海 0.2°,nw,0.6666666666666666,False
+地中海 0.2°,bf1,1.0,True
+地中海 0.2°,iou_med,1.0,True
+地中海 0.2°,nw,1.0,True
+濑户内海 2/63°,bf1,1.0,True
+濑户内海 2/63°,iou_med,1.0,True
+濑户内海 2/63°,nw,0.3333333333333333,False
+赫卡特海峡 2/126°,bf1,1.0,True
+赫卡特海峡 2/126°,iou_med,1.0,True
+赫卡特海峡 2/126°,nw,-1.0,False

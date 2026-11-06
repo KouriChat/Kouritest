@@ -1,0 +1,1 @@
+Create a 2x2 land/water matrix with values 1,0 / 0,1. Write outputs/candidate.csv, outputs/candidate.png (2x2), outputs/candidate_8x.png (16x16), and outputs/generate_map.py. Then reply DONE.

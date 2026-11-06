@@ -1,0 +1,92 @@
+{
+  "global": {
+    "label": "全球 2°",
+    "prompt": "experiment_config/prompts/global.txt",
+    "shape": [
+      90,
+      180
+    ],
+    "upscale": [
+      1440,
+      720
+    ],
+    "ref": "quant/refs/template_land_water_90x180.csv",
+    "map_key": "global",
+    "archive_suffix": ""
+  },
+  "csc": {
+    "label": "南海 0.2°",
+    "prompt": "experiment_config/prompts/csc.txt",
+    "shape": [
+      111,
+      141
+    ],
+    "upscale": [
+      1128,
+      888
+    ],
+    "ref": "quant/refs/template_region_south_china_sea_111x141.csv",
+    "map_key": "csc",
+    "archive_suffix": "_csc"
+  },
+  "dzh": {
+    "label": "地中海 0.2°",
+    "prompt": "experiment_config/prompts/dzh.txt",
+    "shape": [
+      71,
+      231
+    ],
+    "upscale": [
+      1848,
+      568
+    ],
+    "ref": "quant/refs/template_region_mediterranean_71x231.csv",
+    "map_key": "dzh",
+    "archive_suffix": "_dzh"
+  },
+  "seto": {
+    "label": "濑户内海 2/63°",
+    "prompt": "experiment_config/prompts/seto.txt",
+    "shape": [
+      64,
+      253
+    ],
+    "upscale": [
+      2024,
+      512
+    ],
+    "ref": "quant/refs/template_region_seto_inland_sea_64x253.csv",
+    "map_key": "seto",
+    "archive_suffix": "_seto"
+  },
+  "arctic01": {
+    "label": "北极航道 0.1°",
+    "prompt": "experiment_config/prompts/arctic01.txt",
+    "shape": [
+      61,
+      241
+    ],
+    "upscale": [
+      1928,
+      488
+    ],
+    "ref": "quant/refs/template_region_arctic_nwp_61x241.csv",
+    "map_key": "arctic01",
+    "archive_suffix": "_arc01"
+  },
+  "hecate": {
+    "label": "赫卡特海峡 2/126°",
+    "prompt": "experiment_config/prompts/hecate.txt",
+    "shape": [
+      127,
+      127
+    ],
+    "upscale": [
+      1016,
+      1016
+    ],
+    "ref": "quant/refs/template_region_hecate_strait_127x127.csv",
+    "map_key": "hecate",
+    "archive_suffix": "_hec"
+  }
+}

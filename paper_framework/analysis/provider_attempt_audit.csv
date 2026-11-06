@@ -1,0 +1,9 @@
+﻿condition,provider_dir,total,ok,partial,failed,valid_rate,status_note
+OR,experiments,294,120,4,170,0.40816326530612246,
+A,condition_A,120,109,4,7,0.9083333333333333,
+B,condition_B,31,30,0,1,0.967741935483871,
+C,condition_C,130,107,21,2,0.823076923076923,
+D,condition_D,90,79,10,1,0.8777777777777778,
+E,condition_E,125,47,1,77,0.376,
+F,condition_F,113,86,23,4,0.7610619469026548,
+C-excluded,condition_C_excluded,18,0,0,0,0.0,no manifest; unscored

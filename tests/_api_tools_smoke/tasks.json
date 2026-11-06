@@ -1,0 +1,17 @@
+{
+  "global": {
+    "label": "smoke",
+    "prompt": "tests/_api_tools_smoke/prompt.txt",
+    "shape": [
+      2,
+      2
+    ],
+    "upscale": [
+      16,
+      16
+    ],
+    "ref": "tests/_api_tools_smoke/ref.csv",
+    "map_key": "global",
+    "archive_suffix": ""
+  }
+}

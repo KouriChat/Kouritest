@@ -1,0 +1,327 @@
+{
+ "deepseek-v4.1-flash.png": {
+  "mode": "L",
+  "size": [
+   180,
+   90
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.3445679012345679
+ },
+ "deepseek-v4.1-flash_csc.png": {
+  "mode": "L",
+  "size": [
+   141,
+   111
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.3087342661810747
+ },
+ "deepseek-v4.1-flash_dzh.png": {
+  "mode": "L",
+  "size": [
+   231,
+   71
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.5399670751783427
+ },
+ "deepseek-v4.1-flash_seto.png": {
+  "mode": "L",
+  "size": [
+   253,
+   64
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.46547677865612647
+ },
+ "gemini-3.8-flash.png": {
+  "mode": "L",
+  "size": [
+   180,
+   90
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.35512345679012347
+ },
+ "gemini-4-argon.png": {
+  "mode": "L",
+  "size": [
+   180,
+   90
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.33827160493827163
+ },
+ "gemini-4-argon_csc.png": {
+  "mode": "RGB",
+  "size": [
+   141,
+   111
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.32515494217621876
+ },
+ "gemini-4-argon_dzh.png": {
+  "mode": "L",
+  "size": [
+   231,
+   71
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.539906103286385
+ },
+ "gemini-4-argon_seto.png": {
+  "mode": "RGB",
+  "size": [
+   253,
+   64
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.4461462450592885
+ },
+ "gpt-5.6-sol.png": {
+  "mode": "L",
+  "size": [
+   180,
+   90
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.3911728395061728
+ },
+ "gpt-5.6-sol@or.png": {
+  "mode": "L",
+  "size": [
+   180,
+   90
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.38580246913580246
+ },
+ "gpt-5.6-sol_csc.png": {
+  "mode": "L",
+  "size": [
+   141,
+   111
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.418056354226567
+ },
+ "gpt-5.6-sol_dzh.png": {
+  "mode": "L",
+  "size": [
+   231,
+   71
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.5124077800134138
+ },
+ "gpt-5.6-sol_seto.png": {
+  "mode": "L",
+  "size": [
+   253,
+   64
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.623641304347826
+ },
+ "gpt-6-astra.png": {
+  "mode": "L",
+  "size": [
+   180,
+   90
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.34641975308641976
+ },
+ "gpt-6-astra@or.png": {
+  "mode": "L",
+  "size": [
+   180,
+   90
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.34882716049382717
+ },
+ "gpt-6-astra_csc.png": {
+  "mode": "RGB",
+  "size": [
+   141,
+   111
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.3228547696632803
+ },
+ "gpt-6-astra_dzh.png": {
+  "mode": "RGB",
+  "size": [
+   231,
+   71
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.5630754222303518
+ },
+ "gpt-6-astra_seto.png": {
+  "mode": "L",
+  "size": [
+   253,
+   64
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.4676383399209486
+ },
+ "gpt-6.1-sol.png": {
+  "mode": "1",
+  "size": [
+   180,
+   90
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.3795679012345679
+ },
+ "gpt-6.1-sol_csc.png": {
+  "mode": "L",
+  "size": [
+   141,
+   111
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.34055331927672355
+ },
+ "gpt-6.1-sol_dzh.png": {
+  "mode": "L",
+  "size": [
+   231,
+   71
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.6509359185415523
+ },
+ "gpt-6.1-sol_seto.png": {
+  "mode": "1",
+  "size": [
+   253,
+   64
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.7849555335968379
+ },
+ "grok-4.6.png": {
+  "mode": "L",
+  "size": [
+   180,
+   90
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.33209876543209876
+ },
+ "handwritten-baseline_seto.png": {
+  "mode": "RGB",
+  "size": [
+   253,
+   64
+  ],
+  "info_bits": null,
+  "levels": [
+   0,
+   255
+  ],
+  "land_fraction": 0.4461462450592885
+ }
+}

@@ -1,0 +1,55 @@
+{
+  "arctic01": {
+    "label": "北极航道 0.1°",
+    "task_name": "北极航道（西北航道核心区·加拿大北极群岛）",
+    "ref_stem": "arctic_nwp",
+    "lat_min": 73.0,
+    "lat_max": 79.0,
+    "lon_min": -105.0,
+    "lon_max": -81.0,
+    "step": 0.1,
+    "archive_suffix": "_arc01",
+    "water_note": "西北航道中的海峡、水道和冰间湖按水域处理。",
+    "shape": [
+      61,
+      241
+    ],
+    "cells": 14701,
+    "upscale": [
+      1928,
+      488
+    ],
+    "ref": "quant/refs/template_region_arctic_nwp_61x241.csv",
+    "native_png": "quant/refs/template_region_arctic_nwp_61x241.png",
+    "enlarged_png": "quant/refs/template_region_arctic_nwp_1928x488.png",
+    "prompt": "experiment_config/prompts/arctic01.txt",
+    "coarse_subgrid_check": "OK"
+  },
+  "hecate": {
+    "label": "赫卡特海峡 2/126°",
+    "task_name": "赫卡特海峡（加拿大不列颠哥伦比亚北部海岸）",
+    "ref_stem": "hecate_strait",
+    "lat_min": 53.0,
+    "lat_max": 55.0,
+    "lon_min": -131.0,
+    "lon_max": -129.0,
+    "step": 0.015873015873015872,
+    "step_den": 126,
+    "archive_suffix": "_hec",
+    "water_note": "赫卡特海峡、迪克森入口、格雷厄姆岛与莫尔斯比岛之间的水道按水域处理。",
+    "shape": [
+      127,
+      127
+    ],
+    "cells": 16129,
+    "upscale": [
+      1016,
+      1016
+    ],
+    "ref": "quant/refs/template_region_hecate_strait_127x127.csv",
+    "native_png": "quant/refs/template_region_hecate_strait_127x127.png",
+    "enlarged_png": "quant/refs/template_region_hecate_strait_1016x1016.png",
+    "prompt": "experiment_config/prompts/hecate.txt",
+    "coarse_subgrid_check": "OK"
+  }
+}

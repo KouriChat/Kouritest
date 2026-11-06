@@ -1,0 +1,7 @@
+﻿task,task_label,n_conditions,n_hashes,hash_counts
+global,全球 2°,7,1,A:1;B:1;C:1;D:1;E:1;F:1;OR:1
+csc,南海 0.2°,7,1,A:1;B:1;C:1;D:1;E:1;F:1;OR:1
+dzh,地中海 0.2°,7,1,A:1;B:1;C:1;D:1;E:1;F:1;OR:1
+seto,濑户内海 2/63°,7,1,A:1;B:1;C:1;D:1;E:1;F:1;OR:1
+arctic01,北极航道 0.1°,7,1,A:1;B:1;C:1;D:1;E:1;F:1;OR:1
+hecate,赫卡特海峡 2/126°,7,1,A:1;B:1;C:1;D:1;E:1;F:1;OR:1

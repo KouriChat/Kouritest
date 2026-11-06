@@ -1,0 +1,443 @@
+{
+  "review_date": "2026-11-05",
+  "scope": {
+    "batch": "6map",
+    "maps": [
+      "arctic01",
+      "csc",
+      "dzh",
+      "global",
+      "hecate",
+      "seto"
+    ],
+    "replicates_per_map_arm_provider": 2,
+    "selected_cells": 72,
+    "pairs_per_provider_contrast": 12,
+    "excluded_backfill_cells": 16,
+    "recorded_model": "gpt-6.1-sol",
+    "backend": "api",
+    "transport": "direct",
+    "effort": {
+      "H": "high",
+      "L": "low",
+      "Hsham": "high"
+    },
+    "same_prompt_hash_within_map_all_arms_providers": true,
+    "pairing": "H/L groups 1,2; Hsham groups 3,4 correspond to H groups 1,2",
+    "execution_windows_utc_plus_8": {
+      "S1": {
+        "H": {
+          "earliest_start": "2026-11-04T16:54:10+08:00",
+          "latest_finish": "2026-11-04T23:32:00+08:00"
+        },
+        "L": {
+          "earliest_start": "2026-11-04T17:45:33+08:00",
+          "latest_finish": "2026-11-04T19:27:22+08:00"
+        },
+        "Hsham": {
+          "earliest_start": "2026-11-04T18:50:25+08:00",
+          "latest_finish": "2026-11-04T23:51:54+08:00"
+        }
+      },
+      "S2": {
+        "H": {
+          "earliest_start": "2026-11-03T20:29:14+08:00",
+          "latest_finish": "2026-11-04T23:54:42+08:00"
+        },
+        "L": {
+          "earliest_start": "2026-11-03T20:40:54+08:00",
+          "latest_finish": "2026-11-05T00:39:04+08:00"
+        },
+        "Hsham": {
+          "earliest_start": "2026-11-03T22:07:33+08:00",
+          "latest_finish": "2026-11-03T22:19:53+08:00"
+        }
+      }
+    }
+  },
+  "metric_order": [
+    "boundary_f1",
+    "island_iou_median",
+    "accuracy_pct",
+    "island_iou_area_weighted"
+  ],
+  "co_primary": [
+    "boundary_f1",
+    "island_iou_median"
+  ],
+  "secondary": [
+    "accuracy_pct",
+    "island_iou_area_weighted"
+  ],
+  "native_units": "accuracy_pct: percentage-point difference; boundary_f1 and both IoU metrics: 0-1 score difference. Multiply the latter by 100 for the MD tables.",
+  "aggregation": "For each provider, contrast and map, average the two paired other-minus-H differences; average the six map effects with weight 1/6. Vector entries follow metric_order; negative values mean lower scores than H.",
+  "dispersion": "map_effect_sample_sd uses ddof=1 across the same six map effects for both contrasts; describes across-map heterogeneity, not the standard error of the six-map mean.",
+  "signflip_reference": {
+    "unit": "map",
+    "enumerated_sign_vectors": 64,
+    "statistic": "absolute equal-map mean",
+    "tail": "two-sided, including equality",
+    "multiplicity_adjustment": "none",
+    "assumption": "independent, sign-symmetric map-level effects under the zero-effect reference; descriptive supplement, with effect estimates and map directions reported first"
+  },
+  "results": {
+    "S1": {
+      "L_minus_H": {
+        "mean_equal_map": [
+          0.074331416667,
+          0.1481525,
+          0.489235416667,
+          0.057945166667
+        ],
+        "declining_maps_out_of_6": [
+          3,
+          2,
+          3,
+          3
+        ],
+        "map_effect_sample_sd": [
+          0.287903057211,
+          0.307228211436,
+          13.645677871944,
+          0.263091265896
+        ],
+        "exact_two_sided_signflip_p": [
+          0.5625,
+          0.40625,
+          0.96875,
+          0.625
+        ],
+        "map_effects": {
+          "arctic01": [
+            -0.3437615,
+            -0.142172,
+            -18.4885385,
+            -0.307527
+          ],
+          "csc": [
+            0.2864555,
+            0.05723,
+            6.2456075,
+            0.1507185
+          ],
+          "dzh": [
+            0.4197185,
+            0.652592,
+            19.2488265,
+            0.4806835
+          ],
+          "global": [
+            0.2415905,
+            0.387178,
+            8.7283955,
+            0.1164205
+          ],
+          "hecate": [
+            -0.0657935,
+            -0.0661025,
+            -3.007006,
+            -0.04173
+          ],
+          "seto": [
+            -0.092221,
+            0.0001895,
+            -9.7918725,
+            -0.0508945
+          ]
+        }
+      },
+      "Hsham_minus_H": {
+        "mean_equal_map": [
+          -0.148809666667,
+          -0.110838916667,
+          -5.665164166667,
+          -0.1373015
+        ],
+        "declining_maps_out_of_6": [
+          5,
+          4,
+          5,
+          6
+        ],
+        "map_effect_sample_sd": [
+          0.15626243545,
+          0.134629164602,
+          7.061043148359,
+          0.093458409402
+        ],
+        "exact_two_sided_signflip_p": [
+          0.0625,
+          0.125,
+          0.09375,
+          0.03125
+        ],
+        "map_effects": {
+          "arctic01": [
+            -0.163942,
+            -0.129123,
+            -10.087749,
+            -0.1204005
+          ],
+          "csc": [
+            -0.208176,
+            -0.331014,
+            -8.1975595,
+            -0.18117
+          ],
+          "dzh": [
+            -0.098163,
+            -0.013098,
+            -13.724773,
+            -0.16723
+          ],
+          "global": [
+            -0.034829,
+            0.002219,
+            -1.0956785,
+            -0.0046395
+          ],
+          "hecate": [
+            -0.416043,
+            -0.194722,
+            -6.882014,
+            -0.275427
+          ],
+          "seto": [
+            0.028295,
+            0.0007045,
+            5.996789,
+            -0.074942
+          ]
+        }
+      }
+    },
+    "S2": {
+      "L_minus_H": {
+        "mean_equal_map": [
+          -0.059303666667,
+          -0.0002185,
+          -6.872851833333,
+          -0.074595083333
+        ],
+        "declining_maps_out_of_6": [
+          6,
+          3,
+          5,
+          6
+        ],
+        "map_effect_sample_sd": [
+          0.05109472015,
+          0.007570153743,
+          6.24100333998,
+          0.037120880964
+        ],
+        "exact_two_sided_signflip_p": [
+          0.03125,
+          0.90625,
+          0.0625,
+          0.03125
+        ],
+        "map_effects": {
+          "arctic01": [
+            -0.0131735,
+            -0.003209,
+            0.476158,
+            -0.083797
+          ],
+          "csc": [
+            -0.035862,
+            -0.012206,
+            -3.08287,
+            -0.1002705
+          ],
+          "dzh": [
+            -0.148264,
+            0.0039865,
+            -10.71581,
+            -0.122875
+          ],
+          "global": [
+            -0.090755,
+            -0.0012995,
+            -4.1851855,
+            -0.036906
+          ],
+          "hecate": [
+            -0.024387,
+            0.0104405,
+            -17.0872345,
+            -0.0779455
+          ],
+          "seto": [
+            -0.0433805,
+            0.0009765,
+            -6.642169,
+            -0.0257765
+          ]
+        }
+      },
+      "Hsham_minus_H": {
+        "mean_equal_map": [
+          -0.01001525,
+          0.005568333333,
+          -1.209037583333,
+          0.001981666667
+        ],
+        "declining_maps_out_of_6": [
+          2,
+          1,
+          3,
+          2
+        ],
+        "map_effect_sample_sd": [
+          0.100828047603,
+          0.009516842936,
+          5.592690506893,
+          0.113197360782
+        ],
+        "exact_two_sided_signflip_p": [
+          0.875,
+          0.15625,
+          0.65625,
+          0.875
+        ],
+        "map_effects": {
+          "arctic01": [
+            -0.0837095,
+            0.001684,
+            0.4693555,
+            0.0030275
+          ],
+          "csc": [
+            0.0104315,
+            -0.0075215,
+            -1.859306,
+            -0.013007
+          ],
+          "dzh": [
+            -0.1591325,
+            0.0101415,
+            -11.264557,
+            -0.1869615
+          ],
+          "global": [
+            0.0107315,
+            0.020409,
+            -0.9228395,
+            0.016463
+          ],
+          "hecate": [
+            0.0268325,
+            0.0076865,
+            0.539401,
+            0.024822
+          ],
+          "seto": [
+            0.134755,
+            0.0010105,
+            5.7837205,
+            0.167546
+          ]
+        }
+      }
+    }
+  },
+  "island_iou_median_floor": {
+    "rule": "strictly < 0.01 in native 0-1 units, before map averaging",
+    "channels": {
+      "S1": {
+        "H": {
+          "n": 12,
+          "lt_0_01": 6
+        },
+        "L": {
+          "n": 12,
+          "lt_0_01": 4
+        },
+        "Hsham": {
+          "n": 12,
+          "lt_0_01": 11
+        },
+        "H_values_by_map_group_1_2": {
+          "arctic01": [
+            0.178775,
+            0.112798
+          ],
+          "csc": [
+            0.666667,
+            0.0
+          ],
+          "dzh": [
+            0.000753,
+            0.027397
+          ],
+          "global": [
+            0.00222,
+            0.001202
+          ],
+          "hecate": [
+            0.18906,
+            0.202899
+          ],
+          "seto": [
+            0.001536,
+            0.00103
+          ]
+        }
+      },
+      "S2": {
+        "H": {
+          "n": 12,
+          "lt_0_01": 10
+        },
+        "L": {
+          "n": 12,
+          "lt_0_01": 10
+        },
+        "Hsham": {
+          "n": 12,
+          "lt_0_01": 8
+        },
+        "H_values_by_map_group_1_2": {
+          "arctic01": [
+            0.0,
+            0.010033
+          ],
+          "csc": [
+            0.023337,
+            0.005115
+          ],
+          "dzh": [
+            0.002092,
+            0.002063
+          ],
+          "global": [
+            0.003798,
+            0.002064
+          ],
+          "hecate": [
+            0.001371,
+            0.002418
+          ],
+          "seto": [
+            0.000231,
+            0.000603
+          ]
+        }
+      }
+    }
+  },
+  "reconciliation": {
+    "comparisons_with_three_verified_summary_files": 304,
+    "maximum_abs_discrepancy_native": 9e-15,
+    "tolerance": 1e-12,
+    "independent_arm_mean_identity_passed": true,
+    "zero_map_effects_in_reported_metrics": 0
+  },
+  "inputs_sha256": {
+    "selected_cells_verified.csv": "6b30033f9be8bb08e2ca78bc7d5c936f0970972dcc2db6224d1d002ad88ec3b6",
+    "pairs_verified.csv": "a1c429d4a19c4d6b7a7e15c93f18b95e58c93a1e72236f88f958d2dab4d3ef70",
+    "per_map_effects_verified.csv": "d819df519b237ea8e1caecbcf0d2e49fa6af78523a4be2d2c6f1a18207d34d56",
+    "effects_verified.csv": "5fc614c7d1e76337a1e391b89d52ab977721fbeb595764e9ebbdc591924289a4"
+  }
+}
