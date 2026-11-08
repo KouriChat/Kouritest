@@ -1,0 +1,68 @@
+{
+  "generated_at": "2026-10-28T17:58:09+08:00",
+  "design_after_amendment": {
+    "providers": [
+      "channel-C",
+      "channel-F"
+    ],
+    "tasks": [
+      "seto",
+      "hecate"
+    ],
+    "arms": [
+      "high",
+      "medium",
+      "low"
+    ],
+    "replicates": 2,
+    "planned_model_runs": 24
+  },
+  "archived": {
+    "attempt_records": 20,
+    "valid_runs": 15,
+    "invalid_or_partial_runs": 5,
+    "missing_model_runs": 4,
+    "valid_by_arm": {
+      "high": 7,
+      "medium": 3,
+      "low": 5
+    },
+    "attempts_by_arm": {
+      "high": 8,
+      "medium": 4,
+      "low": 8
+    },
+    "status_by_arm": {
+      "high": {
+        "ok": 7,
+        "failed": 1
+      },
+      "medium": {
+        "ok": 3,
+        "partial": 1
+      },
+      "low": {
+        "ok": 5,
+        "partial": 3
+      }
+    },
+    "complete_provider_task_group_triplets": 1
+  },
+  "inference": {
+    "performed": true,
+    "reason": "complete_triplets_available",
+    "policy": "If no complete triplets, report cell means and missingness only; no CI, p-value, or dose-slope inference."
+  },
+  "provider_failure": {
+    "provider": "channel-A",
+    "model": "gpt-6.1-sol-codex",
+    "stage": "medium_replicate_1",
+    "aborted_run_dirs": 2,
+    "manifest_written": false,
+    "reason": "Repeated streaming stalls / stream ended before response.completed; excluded by run-time amendment to avoid blocking the balanced design."
+  },
+  "cross_task": {
+    "any_consistent_negative": true,
+    "note": "Consistency requires valid high and low cells on both tasks for the same provider."
+  }
+}

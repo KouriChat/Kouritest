@@ -1,0 +1,213 @@
+当前环境没有创建文件或运行脚本的能力，因此我无法实际生成、检查或直接附上 PNG；下面提供可独立运行的生成脚本。它用手写的近似海岸线、多边形和岛礁范围判定采样点，不是逐点独立推理，也不查询外部地理数据。运行依赖为 `numpy` 和 `Pillow`。
+
+```python
+from pathlib import Path
+import csv
+import math
+
+import numpy as np
+from PIL import Image
+
+
+# Approximate hand-drawn land outlines. Coordinates are (longitude, latitude).
+# These are rules for point classification, not an external map dataset.
+MAINLAND = [
+    (99.0, 23.0), (120.3, 23.0), (120.0, 22.2), (119.5, 21.8),
+    (119.2, 21.3), (119.0, 20.8), (118.6, 20.3), (118.3, 19.8),
+    (117.9, 19.3), (117.5, 18.8), (117.2, 18.3), (116.9, 17.8),
+    (116.6, 17.3), (116.5, 16.8), (116.3, 16.3), (116.0, 15.8),
+    (115.8, 15.3), (115.5, 14.8), (115.3, 14.3), (115.1, 13.8),
+    (114.9, 13.3), (114.7, 12.8), (114.5, 12.3), (114.3, 11.8),
+    (114.1, 11.3), (113.8, 10.8), (113.4, 10.3), (113.0, 9.8),
+    (112.7, 9.3), (112.3, 8.8), (111.9, 8.3), (111.4, 7.8),
+    (110.9, 7.3), (110.5, 6.8), (110.0, 6.3), (109.5, 5.8),
+    (109.0, 5.3), (108.6, 4.8), (108.2, 4.3), (107.8, 3.8),
+    (107.4, 3.3), (107.0, 2.8), (106.6, 2.3), (106.2, 1.8),
+    (105.8, 1.3), (105.4, 1.0), (99.0, 1.0),
+]
+
+INDOCHINA_WEST = [
+    (99.0, 23.0), (99.5, 22.5), (100.0, 21.8), (100.3, 21.0),
+    (100.1, 20.0), (99.8, 19.0), (99.5, 18.0), (99.3, 17.0),
+    (99.1, 16.0), (99.0, 15.0), (99.0, 14.0), (99.0, 13.0),
+    (99.2, 12.0), (99.5, 11.0), (99.8, 10.0), (100.0, 9.0),
+    (100.1, 8.0), (100.2, 7.0), (100.3, 6.0), (100.4, 5.0),
+    (100.5, 4.0), (100.5, 3.0), (100.4, 2.0), (100.2, 1.0),
+]
+
+# A separate mainland polygon traces the western boundary of Indochina
+# and the Malay Peninsula's west coast.
+INDOCHINA = [
+    (99.0, 23.0), (101.0, 23.0), (101.5, 22.0), (101.8, 21.0),
+    (102.0, 20.0), (102.2, 19.0), (102.5, 18.0), (102.8, 17.0),
+    (103.0, 16.0), (103.2, 15.0), (103.5, 14.0), (103.8, 13.0),
+    (104.0, 12.0), (104.2, 11.0), (104.5, 10.0), (105.0, 9.0),
+    (105.5, 8.0), (105.8, 7.0), (105.7, 6.0), (105.3, 5.0),
+    (104.8, 4.0), (104.2, 3.0), (103.5, 2.0), (102.8, 1.0),
+    (100.2, 1.0), (100.4, 2.0), (100.5, 3.0), (100.5, 4.0),
+    (100.4, 5.0), (100.3, 6.0), (100.2, 7.0), (100.1, 8.0),
+    (100.0, 9.0), (99.8, 10.0), (99.5, 11.0), (99.2, 12.0),
+    (99.0, 13.0), (99.0, 14.0), (99.0, 15.0), (99.1, 16.0),
+    (99.3, 17.0), (99.5, 18.0), (99.8, 19.0), (100.1, 20.0),
+    (100.3, 21.0), (100.0, 21.8), (99.5, 22.5),
+]
+
+# Major islands and island groups around the South China Sea.
+ISLANDS = [
+    # Hainan
+    [(108.5, 20.1), (109.0, 20.2), (109.5, 20.0), (110.0, 19.7),
+     (110.4, 19.4), (110.5, 19.0), (110.1, 18.5), (109.6, 18.2),
+     (109.1, 18.3), (108.7, 18.7), (108.5, 19.2)],
+    # Taiwan
+    [(120.0, 25.3), (121.0, 25.3), (121.7, 24.8), (121.8, 24.0),
+     (121.4, 23.2), (121.0, 22.5), (120.7, 22.0), (120.3, 22.2),
+     (120.0, 23.0), (120.0, 24.0)],
+    # Borneo
+    [(109.0, 7.0), (110.0, 7.3), (111.0, 7.0), (112.0, 6.8),
+     (113.0, 6.6), (114.0, 6.4), (115.0, 5.9), (116.0, 5.2),
+     (117.0, 4.5), (117.5, 3.5), (117.0, 2.5), (116.0, 1.7),
+     (114.5, 1.0), (113.0, 1.0), (111.5, 1.2), (110.0, 1.5),
+     (109.0, 2.2), (108.5, 3.2), (108.5, 4.5), (108.7, 5.7)],
+    # Sumatra
+    [(105.0, 5.8), (105.5, 5.5), (105.7, 4.5), (105.5, 3.5),
+     (105.2, 2.5), (104.8, 1.5), (104.4, 0.5), (103.8, -0.5),
+     (103.2, -1.5), (102.7, -2.5), (102.3, -3.5), (101.8, -4.5),
+     (101.3, -5.5), (100.5, -5.8), (99.8, -5.5), (99.5, -4.5),
+     (99.7, -3.5), (100.0, -2.5), (100.2, -1.5), (100.4, -0.5),
+     (100.5, 0.5), (100.8, 1.5), (101.3, 2.5), (101.8, 3.5),
+     (102.5, 4.5), (103.3, 5.2), (104.2, 5.7)],
+    # Java
+    [(105.0, -5.7), (106.0, -5.8), (107.0, -6.0), (108.0, -6.2),
+     (109.0, -6.5), (110.0, -6.8), (111.0, -7.0), (112.0, -7.3),
+     (113.0, -7.5), (114.0, -7.8), (114.8, -8.0), (114.5, -8.5),
+     (113.5, -8.5), (112.5, -8.3), (111.5, -8.0), (110.5, -7.8),
+     (109.5, -7.5), (108.5, -7.3), (107.5, -7.0), (106.5, -6.7),
+     (105.5, -6.3)],
+    # Sulawesi
+    [(119.0, 1.0), (120.0, 1.5), (121.0, 1.0), (122.0, 0.5),
+     (123.0, 0.0), (124.0, -0.5), (124.5, -1.5), (124.0, -2.0),
+     (123.0, -1.7), (122.0, -1.0), (121.0, -0.5), (120.0, -0.2),
+     (119.0, 0.3)],
+]
+
+# Philippines: major islands represented by compact hand-drawn outlines.
+PHILIPPINES = [
+    [(119.5, 18.6), (120.5, 18.5), (121.0, 17.8), (120.7, 17.0),
+     (120.0, 16.8), (119.5, 17.5)],  # Luzon north
+    [(120.0, 16.5), (121.0, 16.5), (121.5, 15.5), (121.0, 14.5),
+     (120.5, 13.5), (120.0, 13.8), (119.8, 14.8)],  # Luzon south
+    [(122.0, 12.8), (123.0, 12.5), (123.5, 11.5), (123.0, 10.8),
+     (122.2, 11.0), (121.8, 11.8)],  # Samar/Leyte
+    [(122.0, 11.0), (123.5, 10.8), (124.5, 10.0), (123.8, 9.5),
+     (122.8, 9.7), (122.0, 10.2)],  # Mindanao north/east
+    [(123.0, 9.5), (124.5, 9.5), (125.5, 8.8), (125.5, 7.5),
+     (124.8, 6.5), (124.0, 6.0), (123.2, 6.5), (122.8, 7.5)],
+    [(121.0, 13.0), (122.0, 13.0), (122.5, 12.0), (122.0, 11.5),
+     (121.0, 11.8)],  # Panay/Negros
+    [(120.0, 10.8), (121.0, 10.8), (121.3, 10.0), (120.7, 9.5),
+     (119.8, 10.0)],  # Palawan
+]
+
+
+def point_in_polygon(lon, lat, polygon):
+    """Ray casting test; boundary points count as land."""
+    inside = False
+    n = len(polygon)
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+
+        dx, dy = x2 - x1, y2 - y1
+        cross = (lon - x1) * dy - (lat - y1) * dx
+        if abs(cross) < 1e-10:
+            if (min(x1, x2) - 1e-10 <= lon <= max(x1, x2) + 1e-10
+                    and min(y1, y2) - 1e-10 <= lat <= max(y1, y2) + 1e-10):
+                return True
+
+        if (y1 > lat) != (y2 > lat):
+            crossing_lon = x1 + (lat - y1) * dx / dy
+            if lon < crossing_lon:
+                inside = not inside
+    return inside
+
+
+def ellipse_contains(lon, lat, center_lon, center_lat, rx, ry):
+    return ((lon - center_lon) / rx) ** 2 + ((lat - center_lat) / ry) ** 2 <= 1.0
+
+
+# Small islands, reefs, and shoals: approximate centers and extents.
+# Extents are deliberately small so surrounding sea remains water.
+ISLAND_ELLIPSES = [
+    # Paracel Islands
+    (112.33, 16.5, 0.22, 0.20), (111.7, 16.5, 0.12, 0.12),
+    (112.7, 16.3, 0.10, 0.10),
+    # Spratly Islands and nearby reef groups
+    (114.3, 10.3, 0.18, 0.14), (114.1, 11.0, 0.12, 0.12),
+    (115.8, 10.0, 0.16, 0.12), (116.0, 9.7, 0.10, 0.10),
+    (116.7, 10.4, 0.13, 0.12), (116.9, 9.8, 0.12, 0.10),
+    (117.2, 8.8, 0.12, 0.10), (113.9, 8.8, 0.10, 0.10),
+    (112.9, 7.5, 0.10, 0.08), (109.2, 7.3, 0.12, 0.10),
+    # Natuna, Anambas, and Riau groups
+    (108.2, 3.9, 0.20, 0.18), (106.0, 3.0, 0.13, 0.12),
+    (104.5, 1.0, 0.15, 0.12), (108.0, 1.5, 0.12, 0.10),
+    # Gulf of Thailand, coastal and offshore islands
+    (102.5, 9.7, 0.10, 0.12), (100.7, 7.8, 0.10, 0.12),
+    # Andaman and Nicobar Islands
+    (92.7, 13.5, 0.12, 0.18), (93.0, 12.0, 0.10, 0.15),
+]
+
+
+def is_land(lon, lat):
+    if point_in_polygon(lon, lat, MAINLAND):
+        return True
+    if point_in_polygon(lon, lat, INDOCHINA):
+        return True
+    if any(point_in_polygon(lon, lat, polygon) for polygon in ISLANDS):
+        return True
+    if any(point_in_polygon(lon, lat, polygon) for polygon in PHILIPPINES):
+        return True
+    return any(ellipse_contains(lon, lat, *item) for item in ISLAND_ELLIPSES)
+
+
+def main():
+    out_dir = Path("outputs")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    rows = []
+    for row in range(111):
+        lat = 23.0 - row * 0.2
+        values = []
+        for col in range(141):
+            lon = 99.0 + col * 0.2
+            values.append(1 if is_land(lon, lat) else 0)
+        rows.append(values)
+
+    matrix = np.asarray(rows, dtype=np.uint8)
+    if matrix.shape != (111, 141):
+        raise RuntimeError(f"Unexpected matrix shape: {matrix.shape}")
+
+    with (out_dir / "candidate.csv").open("w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # Matrix value 1 is white land; 0 is black water.
+    image = Image.fromarray(matrix * 255, mode="L").convert("RGB")
+    image.save(out_dir / "candidate.png")
+
+    enlarged = image.resize((1128, 888), resample=Image.Resampling.NEAREST)
+    enlarged.save(out_dir / "candidate_8x.png")
+
+    with (out_dir / "candidate.csv").open("r", newline="", encoding="ascii") as f:
+        checked = list(csv.reader(f))
+    assert len(checked) == 111
+    assert all(len(row) == 141 and all(v in ("0", "1") for v in row)
+               for row in checked)
+    assert image.size == (141, 111)
+    assert enlarged.size == (1128, 888)
+    assert set(image.getdata()) <= {(0, 0, 0), (255, 255, 255)}
+    print("Generated 111 x 141 matrix and both PNG images in outputs/.")
+
+
+if __name__ == "__main__":
+    main()
+```

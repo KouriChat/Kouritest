@@ -1,0 +1,87 @@
+{
+  "maps": 6,
+  "scenarios": 492,
+  "summary_rows": 27,
+  "expected_direction_checks": [
+    {
+      "perturbation": "boundary_shift",
+      "metric": "acc",
+      "expected": "decrease",
+      "n": 12,
+      "median_delta": -0.10199323793342135,
+      "min_delta": -0.1814067549475582,
+      "max_delta": -0.052000100637360325,
+      "passes_all": true
+    },
+    {
+      "perturbation": "boundary_shift",
+      "metric": "bf1_1",
+      "expected": "decrease",
+      "n": 12,
+      "median_delta": -0.21005283276424336,
+      "min_delta": -0.47088453499548927,
+      "max_delta": -0.007658502374732756,
+      "passes_all": true
+    },
+    {
+      "perturbation": "island_deletion",
+      "metric": "acc",
+      "expected": "decrease",
+      "n": 9,
+      "median_delta": -0.003959015290332694,
+      "min_delta": -0.0157333588312988,
+      "max_delta": -0.0009806638618781542,
+      "passes_all": true
+    },
+    {
+      "perturbation": "island_deletion",
+      "metric": "iou_med",
+      "expected": "decrease",
+      "n": 9,
+      "median_delta": 0.0,
+      "min_delta": -0.8333333333333334,
+      "max_delta": 0.0,
+      "passes_all": true
+    },
+    {
+      "perturbation": "island_deletion",
+      "metric": "component_recall",
+      "expected": "decrease",
+      "n": 9,
+      "median_delta": -0.2928507151652932,
+      "min_delta": -0.7341545893719806,
+      "max_delta": -0.09636141896372076,
+      "passes_all": true
+    },
+    {
+      "perturbation": "narrow_water_fill",
+      "metric": "narrow_keep",
+      "expected": "decrease",
+      "n": 3,
+      "median_delta": -0.4913234331124652,
+      "min_delta": -1.0,
+      "max_delta": -0.2489848448793609,
+      "passes_all": true
+    },
+    {
+      "perturbation": "spurious_land",
+      "metric": "acc",
+      "expected": "decrease",
+      "n": 3,
+      "median_delta": -0.006306259478551568,
+      "min_delta": -0.025225037914206345,
+      "max_delta": 0.0,
+      "passes_all": true
+    },
+    {
+      "perturbation": "spurious_land",
+      "metric": "bf1_1",
+      "expected": "decrease",
+      "n": 3,
+      "median_delta": -0.013239279036871603,
+      "min_delta": -0.029292608852407413,
+      "max_delta": 0.0,
+      "passes_all": true
+    }
+  ]
+}

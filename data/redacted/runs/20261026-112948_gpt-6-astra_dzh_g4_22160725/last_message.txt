@@ -1,0 +1,173 @@
+המפה由手工近似的大陆海岸线和岛屿多边形生成，再按采样点坐标执行点在多边形内判断；不是对每个点分别推理。脚本仅依赖 Python 标准库、NumPy 和 Pillow，运行后会创建 `outputs/` 并写出 CSV 及两张 PNG。
+
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+# Approximate hand-authored coastlines. Coordinates are (longitude, latitude).
+# These polygons are rules for classifying points, not imported map data.
+MAINLAND = [
+    # Europe and Asia, following the Mediterranean shore westward.
+    [
+        (-1.8, 45.0), (37.0, 45.0), (37.0, 36.0),
+        (35.5, 36.0), (34.5, 36.1), (33.5, 36.2), (32.5, 36.2),
+        (31.0, 36.2), (30.0, 36.2), (29.0, 36.3), (28.0, 36.5),
+        (27.0, 36.6), (26.0, 36.5), (25.5, 36.5), (25.0, 36.7),
+        (24.5, 36.8), (24.0, 36.9), (23.5, 37.0), (23.0, 37.1),
+        (22.5, 37.0), (22.0, 37.0), (21.5, 37.0), (21.0, 37.0),
+        (20.5, 37.0), (20.0, 37.0), (19.5, 37.0), (19.0, 37.1),
+        (18.5, 37.2), (18.0, 37.4), (17.5, 38.0), (17.0, 39.0),
+        (16.5, 40.0), (16.0, 40.5), (15.5, 41.0), (15.0, 41.3),
+        (14.5, 41.5), (14.0, 41.8), (13.5, 42.0), (13.0, 42.2),
+        (12.5, 42.5), (12.0, 43.0), (11.5, 43.5), (11.0, 44.0),
+        (10.5, 44.3), (10.0, 44.5), (9.5, 44.7), (9.0, 44.8),
+        (8.5, 44.8), (8.0, 44.7), (7.5, 44.5), (7.0, 44.2),
+        (6.5, 43.9), (6.0, 43.7), (5.5, 43.5), (5.0, 43.3),
+        (4.5, 43.2), (4.0, 43.2), (3.5, 43.3), (3.0, 43.4),
+        (2.5, 43.4), (2.0, 42.8), (1.5, 42.5), (1.0, 42.4),
+        (0.5, 42.5), (0.0, 42.7), (-0.5, 43.0), (-1.0, 43.3),
+        (-1.5, 43.5), (-2.0, 43.5), (-3.0, 43.4), (-4.0, 43.4),
+        (-5.0, 43.4), (-6.0, 43.5), (-7.0, 43.6), (-8.0, 43.7),
+        (-8.8, 43.7), (-8.8, 42.5), (-8.8, 41.5), (-8.7, 40.5),
+        (-8.8, 39.5), (-9.0, 38.5), (-9.0, 37.0), (-8.5, 37.0),
+        (-7.5, 37.0), (-6.5, 36.8), (-5.7, 36.3), (-5.3, 36.0),
+        (-5.0, 36.0), (-4.5, 36.0), (-3.5, 36.0), (-2.5, 36.0),
+        (-1.5, 36.0), (-0.5, 36.0), (0.5, 36.0), (1.5, 36.0),
+        (2.5, 36.0), (3.5, 36.0), (4.5, 36.0), (5.5, 36.0),
+        (6.5, 36.0), (7.5, 36.0), (8.5, 36.0), (9.5, 36.0),
+        (10.5, 36.0), (11.5, 36.0), (12.5, 36.0), (13.5, 36.0),
+        (14.5, 36.0), (15.5, 36.0), (16.5, 36.0), (17.5, 36.0),
+        (18.5, 36.0), (19.5, 36.0), (20.5, 36.0), (21.5, 36.0),
+        (22.5, 36.0), (23.5, 36.0), (24.5, 36.0), (25.5, 36.0),
+        (26.5, 36.0), (27.5, 36.0), (28.5, 36.0), (29.5, 36.0),
+        (30.5, 36.0), (31.5, 36.0), (32.5, 36.0), (33.5, 36.0),
+        (34.5, 36.0), (35.5, 36.0), (37.0, 36.0),
+    ],
+    # Africa, with the southern edge clipped at the sampling frame.
+    [
+        (-9.0, 31.0), (37.0, 31.0), (37.0, 31.2), (35.5, 31.3),
+        (34.5, 31.3), (33.5, 31.3), (32.5, 31.3), (31.5, 31.5),
+        (30.5, 31.5), (29.5, 31.3), (28.5, 31.2), (27.5, 31.2),
+        (26.5, 31.3), (25.5, 31.3), (24.5, 31.3), (23.5, 31.3),
+        (22.5, 31.3), (21.5, 31.3), (20.5, 31.3), (19.5, 31.3),
+        (18.5, 31.3), (17.5, 31.3), (16.5, 31.3), (15.5, 31.3),
+        (14.5, 31.3), (13.5, 31.3), (12.5, 31.3), (11.5, 31.3),
+        (10.5, 31.3), (9.5, 31.3), (8.5, 31.3), (7.5, 31.3),
+        (6.5, 31.3), (5.5, 31.3), (4.5, 31.3), (3.5, 31.3),
+        (2.5, 31.3), (1.5, 31.3), (0.5, 31.3), (-0.5, 31.3),
+        (-1.5, 31.3), (-2.5, 31.3), (-3.5, 31.3), (-4.5, 31.3),
+        (-5.5, 31.3), (-6.5, 31.3), (-7.5, 31.3), (-8.5, 31.3),
+        (-9.0, 31.0),
+    ],
+]
+
+ISLANDS = [
+    # Balearic Islands
+    [(-1.0, 39.8), (0.0, 39.7), (1.5, 39.7), (2.0, 39.9),
+     (2.0, 40.2), (1.2, 40.1), (0.3, 40.1), (-0.5, 40.0)],
+    # Corsica
+    [(8.5, 41.3), (9.5, 41.4), (9.6, 42.0), (9.4, 42.7),
+     (9.2, 43.0), (8.8, 42.8), (8.7, 42.1)],
+    # Sardinia
+    [(8.1, 38.8), (8.2, 39.5), (8.3, 40.3), (8.5, 40.9),
+     (9.0, 41.2), (9.6, 40.8), (9.7, 40.0), (9.5, 39.2),
+     (9.0, 38.8), (8.5, 38.7)],
+    # Sicily
+    [(12.4, 36.6), (13.0, 36.6), (14.0, 37.0), (15.2, 37.2),
+     (15.3, 37.8), (14.5, 38.2), (13.5, 38.2), (12.7, 37.7)],
+    # Malta and Gozo
+    [(14.1, 35.8), (14.6, 35.8), (14.6, 36.1), (14.1, 36.1)],
+    # Crete
+    [(23.4, 34.9), (24.0, 34.9), (25.0, 35.0), (26.3, 35.2),
+     (26.3, 35.5), (25.0, 35.6), (24.0, 35.6), (23.4, 35.3)],
+    # Cyprus
+    [(32.2, 34.5), (33.0, 34.5), (34.0, 34.7), (34.7, 35.0),
+     (34.6, 35.4), (33.7, 35.7), (32.8, 35.6), (32.2, 35.2)],
+    # Rhodes
+    [(27.7, 35.8), (28.2, 35.8), (28.2, 36.3), (27.8, 36.5)],
+    # Selected Aegean islands
+    [(24.0, 36.4), (24.5, 36.4), (24.7, 36.8), (24.2, 36.9)],
+    [(25.0, 36.5), (25.5, 36.5), (25.7, 37.0), (25.2, 37.0)],
+    [(26.0, 36.5), (26.5, 36.5), (26.7, 37.0), (26.2, 37.0)],
+    [(23.0, 37.0), (23.5, 37.0), (23.7, 37.4), (23.2, 37.5)],
+    # Ionian islands
+    [(19.5, 38.0), (20.0, 38.0), (20.2, 38.6), (19.7, 38.7)],
+    [(20.4, 38.3), (20.8, 38.3), (21.0, 38.8), (20.5, 38.9)],
+    # Djerba
+    [(10.4, 33.6), (11.0, 33.6), (11.2, 33.9), (10.7, 34.0)],
+]
+
+
+def inside_polygon(lon_grid, lat_grid, polygon):
+    """Vectorized point-in-polygon test; boundary points count as land."""
+    inside = np.zeros(lon_grid.shape, dtype=bool)
+    n = len(polygon)
+    eps = 1e-10
+
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+
+        dx = x2 - x1
+        dy = y2 - y1
+        cross = (lon_grid - x1) * dy - (lat_grid - y1) * dx
+        on_segment = (
+            (np.abs(cross) <= eps)
+            & (lon_grid >= min(x1, x2) - eps)
+            & (lon_grid <= max(x1, x2) + eps)
+            & (lat_grid >= min(y1, y2) - eps)
+            & (lat_grid <= max(y1, y2) + eps)
+        )
+        inside |= on_segment
+
+        crosses_ray = (y1 > lat_grid) != (y2 > lat_grid)
+        x_intersection = x1 + (lat_grid - y1) * dx / (dy if dy != 0 else 1.0)
+        inside ^= crosses_ray & (lon_grid < x_intersection)
+
+    return inside
+
+
+def main():
+    latitudes = np.round(np.arange(45.0, 30.999, -0.2), 1)
+    longitudes = np.round(np.arange(-9.0, 37.001, 0.2), 1)
+    lon_grid, lat_grid = np.meshgrid(longitudes, latitudes)
+
+    land = np.zeros((len(latitudes), len(longitudes)), dtype=bool)
+    for polygon in MAINLAND + ISLANDS:
+        land |= inside_polygon(lon_grid, lat_grid, polygon)
+
+    matrix = land.astype(np.uint8)
+    assert matrix.shape == (71, 231)
+    assert matrix.size == 16401
+
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = output_dir / "candidate.csv"
+    with csv_path.open("w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # Mode 1 maps land to white and water to black.
+    image = Image.fromarray(matrix * 255, mode="L")
+    image.save(output_dir / "candidate.png")
+    enlarged = image.resize((1848, 568), resample=Image.Resampling.NEAREST)
+    enlarged.save(output_dir / "candidate_8x.png")
+
+    # Validate serialized files and raster properties.
+    with csv_path.open("r", newline="", encoding="ascii") as f:
+        rows = list(csv.reader(f))
+    assert len(rows) == 71 and all(len(row) == 231 for row in rows)
+    assert all(value in ("0", "1") for row in rows for value in row)
+    assert image.size == (231, 71)
+    assert set(image.getdata()) <= {0, 255}
+    assert enlarged.size == (1848, 568)
+    assert set(enlarged.getdata()) <= {0, 255}
+
+
+if __name__ == "__main__":
+    main()
+```

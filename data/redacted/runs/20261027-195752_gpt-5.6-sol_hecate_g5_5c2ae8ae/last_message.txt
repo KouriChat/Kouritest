@@ -1,0 +1,134 @@
+下列脚本用手写的粗略海岸线与岛屿多边形，按采样点逐点执行点在多边形内判断；这不是对每个点独立进行地理推理，轮廓也不代表精确海岸线。运行依赖为 Python、NumPy 和 Pillow。脚本会生成并校验 CSV、原始 PNG 和最近邻放大 PNG；此处无法直接附上运行后生成的图片。
+
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+N = 127
+STEP = 2.0 / 126.0
+
+# 手写近似轮廓，坐标顺序为 (经度, 纬度)，经度使用西经负值。
+# 大陆主体以海岸线为西界，向东延伸至本次采样框边缘。
+MAINLAND = [
+    (-130.02, 55.00), (-129.92, 54.92), (-130.10, 54.86),
+    (-130.24, 54.76), (-130.19, 54.65), (-130.08, 54.57),
+    (-130.18, 54.49), (-130.04, 54.39), (-130.16, 54.31),
+    (-130.06, 54.20), (-130.15, 54.12), (-130.02, 54.01),
+    (-130.10, 53.92), (-129.92, 53.83), (-129.98, 53.74),
+    (-129.84, 53.66), (-129.91, 53.57), (-129.72, 53.49),
+    (-129.77, 53.39), (-129.61, 53.30), (-129.70, 53.21),
+    (-129.55, 53.12), (-129.60, 53.00),
+    (-129.00, 53.00), (-129.00, 55.00),
+]
+
+# 外海岛屿和近岸岛屿的简化轮廓。
+ISLANDS = [
+    # Banks Island
+    [(-130.20, 54.36), (-130.08, 54.38), (-129.99, 54.31),
+     (-129.94, 54.21), (-129.98, 54.08), (-130.06, 53.98),
+     (-130.17, 54.01), (-130.23, 54.12), (-130.25, 54.25)],
+    # Porcher Island
+    [(-130.48, 54.02), (-130.38, 54.07), (-130.27, 54.03),
+     (-130.24, 53.95), (-130.31, 53.88), (-130.42, 53.89),
+     (-130.50, 53.95)],
+    # Pitt Island
+    [(-130.21, 53.78), (-130.10, 53.82), (-129.99, 53.75),
+     (-129.91, 53.61), (-129.89, 53.43), (-129.96, 53.26),
+     (-130.06, 53.18), (-130.15, 53.25), (-130.20, 53.43),
+     (-130.25, 53.60)],
+    # Aristazabal Island
+    [(-130.58, 53.69), (-130.46, 53.75), (-130.34, 53.68),
+     (-130.29, 53.54), (-130.34, 53.38), (-130.44, 53.31),
+     (-130.55, 53.39), (-130.61, 53.54)],
+    # McCauley Island
+    [(-130.43, 53.79), (-130.34, 53.82), (-130.28, 53.77),
+     (-130.30, 53.70), (-130.38, 53.68), (-130.44, 53.72)],
+    # Smaller coastal islands, represented as separate polygons.
+    [(-130.73, 53.60), (-130.67, 53.64), (-130.61, 53.60),
+     (-130.63, 53.54), (-130.70, 53.53)],
+    [(-130.87, 53.43), (-130.80, 53.47), (-130.74, 53.42),
+     (-130.78, 53.36), (-130.84, 53.37)],
+    [(-130.55, 54.22), (-130.49, 54.26), (-130.43, 54.22),
+     (-130.45, 54.16), (-130.52, 54.16)],
+]
+
+# 近岸海湾与水道的近似水域轮廓；从大陆掩膜中扣除。
+WATER_CUTS = [
+    # Portland Canal / northern inlet
+    [(-130.02, 55.01), (-129.82, 55.01), (-129.88, 54.91),
+     (-130.00, 54.87), (-130.12, 54.91)],
+    # Approximate passages and inlets along the mainland coast
+    [(-130.20, 54.79), (-130.05, 54.80), (-130.01, 54.68),
+     (-130.11, 54.61), (-130.22, 54.66)],
+    [(-130.14, 54.46), (-129.99, 54.47), (-129.94, 54.37),
+     (-130.08, 54.32), (-130.19, 54.37)],
+    [(-130.12, 54.16), (-129.97, 54.18), (-129.92, 54.08),
+     (-130.04, 54.00), (-130.15, 54.06)],
+    [(-129.99, 53.88), (-129.83, 53.90), (-129.79, 53.80),
+     (-129.91, 53.75), (-130.02, 53.80)],
+]
+
+
+def inside_polygon(x, y, polygon):
+    """Return a boolean mask for points inside a hand-drawn polygon."""
+    inside = np.zeros(x.shape, dtype=bool)
+    j = len(polygon) - 1
+    for i in range(len(polygon)):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        crosses = (yi > y) != (yj > y)
+        x_intersect = (xj - xi) * (y - yi) / (yj - yi + 1e-30) + xi
+        inside ^= crosses & (x < x_intersect)
+        j = i
+    return inside
+
+
+def main():
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    latitudes = 55.0 - np.arange(N) * STEP
+    longitudes = -131.0 + np.arange(N) * STEP
+    x, y = np.meshgrid(longitudes, latitudes)
+
+    land = inside_polygon(x, y, MAINLAND)
+    for cut in WATER_CUTS:
+        land &= ~inside_polygon(x, y, cut)
+    for island in ISLANDS:
+        land |= inside_polygon(x, y, island)
+
+    matrix = land.astype(np.uint8)
+    assert matrix.shape == (127, 127)
+    assert matrix.size == 16129
+    assert np.isin(matrix, (0, 1)).all()
+
+    csv_path = output_dir / "candidate.csv"
+    with csv_path.open("w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # Matrix values are 0=water (black) and 1=land (white).
+    pixels = matrix * 255
+    original = Image.fromarray(pixels, mode="L")
+    original.save(output_dir / "candidate.png")
+    enlarged = original.resize((1016, 1016), resample=Image.Resampling.NEAREST)
+    enlarged.save(output_dir / "candidate_8x.png")
+
+    with csv_path.open("r", newline="", encoding="ascii") as f:
+        rows = list(csv.reader(f))
+    assert len(rows) == 127
+    assert all(len(row) == 127 for row in rows)
+    assert all(value in ("0", "1") for row in rows for value in row)
+    assert original.size == (127, 127)
+    assert set(original.getdata()) <= {0, 255}
+    assert enlarged.size == (1016, 1016)
+    assert set(enlarged.getdata()) <= {0, 255}
+    print("Validated: 127x127 CSV and PNG; 1016x1016 nearest-neighbor PNG.")
+
+
+if __name__ == "__main__":
+    main()
+```

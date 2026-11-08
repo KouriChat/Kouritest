@@ -1,0 +1,240 @@
+"""Approximate Canadian Arctic Archipelago land mask, drawn from memory."""
+
+from pathlib import Path
+import csv
+
+from PIL import Image
+
+
+# Polygon coordinates are west longitude (positive degrees W), latitude (N).
+# These outlines are hand-written approximations, not imported geographic data.
+LAND = []
+
+
+def island(name, coordinates):
+    points = []
+    for pair in coordinates.split():
+        west, north = pair.split(",")
+        points.append((float(west), float(north)))
+    LAND.append((name, points))
+
+
+island("Southwestern Ellesmere Island", """
+    89.2,79.0 88.6,78.7 89.4,78.4 90.4,78.1
+    91.2,77.8 91.5,77.3 90.7,77.1 90.0,77.3
+    89.1,77.2 88.7,76.9 87.6,76.8 86.8,76.5
+    85.9,76.3 84.9,76.2 84.0,76.0 82.9,76.1
+    82.2,76.3 81.0,76.2 81.0,79.0
+""")
+
+island("Southern Axel Heiberg Island", """
+    97.3,79.0 96.9,78.8 96.1,78.6 95.6,78.2
+    94.6,78.1 94.0,77.9 93.1,78.0 92.5,78.3
+    92.8,78.6 91.8,78.8 91.0,79.0
+""")
+
+island("Ellef Ringnes Island", """
+    104.1,79.0 104.5,78.8 104.3,78.4 103.8,78.1
+    103.0,77.9 102.1,77.7 101.2,77.8 100.7,78.0
+    100.0,78.1 99.4,78.5 99.2,78.8 99.6,79.0
+""")
+
+island("Amund Ringnes Island", """
+    98.5,79.0 99.0,78.7 99.0,78.3 98.5,78.0
+    97.8,77.8 97.2,77.6 96.5,77.7 96.0,78.0
+    95.1,78.0 94.8,78.3 95.0,78.7 95.7,79.0
+""")
+
+island("Eastern Lougheed Island", """
+    105.0,77.8 104.4,77.7 103.9,77.4
+    104.0,77.1 104.7,77.0 105.0,77.1
+""")
+
+island("King Christian Island", """
+    102.4,78.1 101.8,78.0 101.2,77.8
+    100.8,77.6 101.2,77.5 102.0,77.6
+    102.5,77.8
+""")
+
+island("Bathurst Island", """
+    102.5,77.7 101.8,77.6 101.1,77.7 100.6,77.4
+    100.0,77.5 99.6,77.2 99.0,77.3 98.7,77.0
+    98.0,77.0 97.8,76.6 97.3,76.3 97.6,75.9
+    98.2,75.7 99.0,75.8 99.5,75.6 100.3,75.7
+    101.0,75.8 101.5,76.0 102.3,76.0 102.6,76.3
+    103.4,76.3 103.8,76.7 103.4,77.0 102.8,77.0
+""")
+
+island("Cameron Island", """
+    104.3,76.9 103.8,76.8 103.5,76.5
+    103.6,76.2 104.1,76.0 104.8,76.1
+    105.0,76.4 104.8,76.7
+""")
+
+island("Islet northeast of Bathurst", """
+    98.5,77.5 98.0,77.4 97.7,77.1
+    97.8,76.9 98.3,77.0
+""")
+
+island("Islet north of Bathurst", """
+    101.2,78.0 100.7,77.9 100.5,77.7
+    100.9,77.6 101.4,77.8
+""")
+
+island("Byam Martin Island", """
+    105.0,75.9 104.5,75.9 103.9,75.7
+    103.6,75.4 103.8,75.1 104.3,75.0
+    104.9,75.1 105.0,75.2
+""")
+
+island("Little Cornwallis Island", """
+    97.1,75.9 96.5,76.0 95.9,75.8
+    95.6,75.5 95.9,75.3 96.5,75.3
+    97.0,75.5
+""")
+
+island("Cornwallis Island", """
+    96.8,75.2 96.3,75.4 95.7,75.4 95.2,75.2
+    94.6,75.4 94.0,75.3 93.6,75.0 92.9,74.9
+    92.8,74.7 93.5,74.5 94.2,74.6 94.7,74.5
+    95.4,74.6 96.1,74.7 96.7,74.9
+""")
+
+island("Baillie-Hamilton Island", """
+    95.8,76.7 95.0,76.8 94.4,76.6 94.0,76.3
+    93.4,76.1 93.5,75.8 94.0,75.6 94.7,75.7
+    95.3,76.0 95.9,76.3
+""")
+
+island("North Kent Island", """
+    92.7,77.0 92.2,76.9 91.8,76.7
+    91.8,76.5 92.2,76.3 92.9,76.4
+    93.1,76.7
+""")
+
+island("South Kent Island", """
+    91.4,76.6 90.9,76.5 90.6,76.2
+    90.9,76.0 91.5,76.1 91.8,76.3
+""")
+
+island("Graham Island", """
+    91.4,77.9 90.9,77.8 90.6,77.6
+    90.9,77.4 91.5,77.5 91.7,77.7
+""")
+
+island("Devon Island", """
+    96.0,75.6 95.7,75.9 95.0,76.1 94.5,76.3
+    93.9,76.3 93.6,76.0 93.0,76.0 92.5,76.2
+    92.4,76.4 91.8,76.5 91.1,76.4 90.6,76.2
+    90.0,76.3 89.3,76.5 88.7,76.4 88.1,76.6
+    87.3,76.7 86.5,76.8 85.9,76.6 85.1,76.6
+    84.5,76.4 83.8,76.5 83.0,76.3 82.3,76.4
+    81.6,76.2 81.0,76.1 81.0,74.5 81.7,74.5
+    82.3,74.3 83.1,74.4 83.8,74.3 84.4,74.4
+    85.2,74.3 86.0,74.3 86.8,74.4 87.5,74.4
+    88.2,74.5 89.0,74.5 89.8,74.6 90.6,74.7
+    91.3,74.7 92.1,74.8 92.8,74.8 93.5,74.9
+    94.3,74.9 95.0,75.1 95.5,75.3
+""")
+
+island("Northern Prince of Wales Island", """
+    99.3,74.2 98.6,74.1 98.0,73.9 97.7,73.7
+    97.1,73.5 96.8,73.1 96.9,73.0 101.6,73.0
+    101.5,73.2 101.0,73.5 100.6,73.7 100.0,73.8
+    99.8,74.0
+""")
+
+island("Northern Somerset Island", """
+    93.3,74.3 92.7,74.3 92.0,74.1 91.5,74.0
+    90.9,74.1 90.2,74.0 89.6,73.8 89.2,73.5
+    88.9,73.0 95.7,73.0 96.0,73.4 95.9,73.7
+    95.4,73.9 94.8,74.0 94.2,74.2
+""")
+
+island("Prince Leopold Island", """
+    90.4,74.1 90.0,74.1 89.8,73.9
+    90.0,73.7 90.4,73.8
+""")
+
+island("Northwestern Baffin Island", """
+    88.0,73.0 87.4,73.2 86.8,73.3 86.1,73.5
+    85.5,73.5 84.9,73.4 84.3,73.6 83.6,73.5
+    83.1,73.3 82.4,73.2 81.8,73.0
+""")
+
+island("Small eastern Baffin peninsula", """
+    82.6,73.0 82.1,73.2 81.7,73.2
+    81.4,73.0
+""")
+
+
+def inside_polygon(west, north, points):
+    """Classify the sampling point itself using ray crossing."""
+    inside = False
+    previous_x, previous_y = points[-1]
+    for current_x, current_y in points:
+        if (current_y > north) != (previous_y > north):
+            crossing_x = current_x + (
+                (north - current_y)
+                * (previous_x - current_x)
+                / (previous_y - current_y)
+            )
+            if west < crossing_x:
+                inside = not inside
+        previous_x, previous_y = current_x, current_y
+    return inside
+
+
+def is_land(west, north):
+    return int(any(
+        inside_polygon(west, north, outline)
+        for _, outline in LAND
+    ))
+
+
+def main():
+    output = Path("outputs")
+    output.mkdir(parents=True, exist_ok=True)
+
+    # Integer coordinate arithmetic prevents cumulative 0.1-degree drift.
+    matrix = [
+        [is_land((1050 - col) / 10, (790 - row) / 10)
+         for col in range(241)]
+        for row in range(61)
+    ]
+    assert len(matrix) == 61
+    assert all(len(row) == 241 for row in matrix)
+    assert sum(map(len, matrix)) == 14701
+    assert all(value in (0, 1) for row in matrix for value in row)
+
+    csv_path = output / "candidate.csv"
+    with csv_path.open("w", encoding="utf-8", newline="") as file:
+        csv.writer(file).writerows(matrix)
+
+    with csv_path.open("r", encoding="utf-8", newline="") as file:
+        rows = list(csv.reader(file))
+    assert len(rows) == 61
+    assert all(len(row) == 241 for row in rows)
+    assert all(value in ("0", "1") for row in rows for value in row)
+
+    pixels = bytes(255 if value else 0 for row in matrix for value in row)
+    original = Image.frombytes("L", (241, 61), pixels)
+    original.save(output / "candidate.png")
+
+    nearest = getattr(Image, "Resampling", Image).NEAREST
+    enlarged = original.resize((1928, 488), resample=nearest)
+    enlarged.save(output / "candidate_8x.png")
+
+    assert original.size == (241, 61)
+    assert enlarged.size == (1928, 488)
+    assert set(original.getdata()) <= {0, 255}
+    assert set(enlarged.getdata()) <= {0, 255}
+    assert all(
+        enlarged.getpixel((x, y)) == original.getpixel((x // 8, y // 8))
+        for y in range(488)
+        for x in range(1928)
+    )
+
+
+if __name__ == "__main__":
+    main()

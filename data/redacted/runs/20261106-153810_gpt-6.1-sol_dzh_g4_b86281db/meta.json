@@ -1,0 +1,30 @@
+{
+  "run_id": "20261106-153810_gpt-6.1-sol_dzh_g4_b86281db",
+  "channel": "A",
+  "batch_id": "batch-07",
+  "started_at": "2026-11-06T15:38:10+08:00",
+  "finished_at": "2026-11-06T16:02:58+08:00",
+  "duration_sec": 1487.7,
+  "status": "failed",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": 1,
+  "model": "gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "dzh",
+  "task_label": "地中海 0.2°",
+  "group": 4,
+  "prompt_sha256": "ed60d2d0403da116ee920e35b57d8eca0509572e4331d15e0459b831ea2f9894",
+  "error": "RuntimeError: {\"type\": \"error\", \"sequence_number\": 0, \"code\": \"upstream_stream_read_error\", \"message\": \"Upstream response stream was interrupted\", \"param\": null}",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261106-153810_gpt-6.1-sol_dzh_g4_b86281db/script.py"
+  }
+}

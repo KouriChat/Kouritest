@@ -1,0 +1,7 @@
+task,task_label,n_pairs_HL,n_pairs_sham,bf1_HL,bf1_sham_abs,iou_HL,iou_sham_abs,acc_HL,acc_sham_abs,hss_HL,hss_sham_abs,iou_aw_HL,iou_aw_sham_abs,iou50_HL,iou50_sham_abs,comp_recall_HL,comp_recall_sham_abs,nw_HL,nw_sham_abs
+global,全球 2°,0,0,,,,,,,,,,,,,,,,
+csc,南海 0.2°,0,0,,,,,,,,,,,,,,,,
+dzh,地中海 0.2°,0,0,,,,,,,,,,,,,,,,
+seto,濑户内海 2/63°,0,0,,,,,,,,,,,,,,,,
+arctic01,北极航道 0.1°,0,0,,,,,,,,,,,,,,,,
+hecate,赫卡特海峡 2/126°,0,0,,,,,,,,,,,,,,,,

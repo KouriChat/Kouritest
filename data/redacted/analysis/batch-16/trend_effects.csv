@@ -1,0 +1,9 @@
+metric,metric_label,n_complete_triplets,mean_slope_per_d,slope_ci95_low,slope_ci95_high,n_negative_slope,share_negative_slope,p_one_sided_negative,p_method
+accuracy,准确率,1,-0.05133610500000002,-0.05133610500000002,-0.05133610500000002,1,1.0,0.5,exact(2)
+hss,HSS,1,-0.093367,-0.093367,-0.093367,1,1.0,0.5,exact(2)
+boundary_f1,边界F1@1,1,-0.043040999999999996,-0.043040999999999996,-0.043040999999999996,1,1.0,0.5,exact(2)
+narrow_water_keep,近陆窄水保留率,1,0.23412700000000003,0.23412700000000003,0.23412700000000003,0,0.0,1.0,exact(2)
+island_iou_median,岛屿IoU中位数,1,-0.008945,-0.008945,-0.008945,1,1.0,0.5,exact(2)
+island_iou_area_weighted,岛屿IoU面积加权,1,-0.05579099999999998,-0.05579099999999998,-0.05579099999999998,1,1.0,0.5,exact(2)
+island_iou_ge50,岛屿IoU≥0.5比例,1,0.0,0.0,0.0,0,0.0,1.0,exact(2)
+component_recall,分量召回率,1,0.0,0.0,0.0,0,0.0,1.0,exact(2)

@@ -1,0 +1,169 @@
+以下脚本把手写的粗略海岸线和岛屿多边形作为规则，通过点在多边形内判断采样点；不是对每个点分别进行语言模型推理。未使用外部地理数据。当前对话环境无法执行脚本或直接附上生成后的 PNG；运行后会在 `outputs/` 中生成 CSV 和两张图片。
+
+依赖：Python、NumPy、Pillow。
+
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+# Sampling grid: north to south, west to east.
+LONS = np.round(np.arange(-9.0, 37.0 + 0.001, 0.2), 1)
+LATS = np.round(np.arange(45.0, 31.0 - 0.001, -0.2), 1)
+OUT = Path("outputs")
+
+# Hand-authored approximate coastline rings; vertices are (lon, lat).
+# These are knowledge-based approximations, not retrieved geographic data.
+LAND = [
+    # Southern edge of Europe, then closed along the northern frame.
+    [
+        (-9, 45), (26, 45), (26, 39), (25, 38), (24, 37.4),
+        (23, 37), (22.1, 37.2), (21.2, 38), (20, 39),
+        (18.5, 40.2), (17, 41), (15.8, 41.2), (14.5, 42),
+        (13, 42.5), (12, 43), (11, 43.6), (10, 44.5),
+        (8.7, 44.5), (7.5, 43.8), (6.5, 43.3), (5.2, 43),
+        (4, 43.3), (3, 43.5), (2, 43.3), (1, 42.8),
+        (0, 42.7), (-1, 43), (-2, 43.3), (-3, 43.6),
+        (-4, 43.5), (-5, 43.6), (-6, 43.8), (-7, 44),
+        (-8, 44.4), (-9, 44.6),
+    ],
+    # Iberian Peninsula.
+    [
+        (-9, 43.8), (-8, 43.5), (-7.4, 43), (-6.8, 42.4),
+        (-6, 41.6), (-5.3, 40.2), (-4.5, 39), (-3.4, 37.5),
+        (-2, 36.7), (-1, 36.5), (0, 37), (1, 37.6),
+        (2, 38.5), (3, 40), (3.2, 41.5), (3, 43.5),
+        (2, 43.5), (1, 43.3), (0, 43), (-1, 43),
+        (-2, 43.3), (-3, 43.5), (-4, 43.5), (-5, 43.7),
+        (-6, 43.8), (-7, 44), (-8, 44.2),
+    ],
+    # Italian peninsula and mainland south of the Alps.
+    [
+        (7, 44.3), (8.5, 44.1), (10, 44), (11.5, 43.2),
+        (12.8, 42), (13.8, 41.2), (14.5, 40.5), (15.3, 39.8),
+        (16.2, 39.5), (16.5, 38.8), (15.8, 38.2), (15, 38),
+        (14.3, 38.5), (13.5, 39), (13, 40), (12, 41),
+        (11, 42), (10, 43), (8.5, 43.5),
+    ],
+    # Anatolia and the land to the east of the Aegean.
+    [
+        (26, 39), (27, 38), (28, 37.2), (29, 36.8),
+        (30, 36), (31, 36), (32, 36.2), (33, 36),
+        (34, 36.1), (35, 36.5), (36, 36.6), (37, 36.5),
+        (37, 45), (26, 45),
+    ],
+    # North African Mediterranean coast and southern frame.
+    [
+        (-5.5, 31), (-5.5, 35.8), (-4.5, 35.9), (-3, 35.7),
+        (-1.5, 35.2), (0, 35), (1, 35.1), (2, 36),
+        (3, 36.8), (4, 36.8), (5, 37), (6, 36.7),
+        (7, 37), (8, 37.1), (9, 37.2), (10, 37),
+        (11, 37), (11.5, 36.5), (12, 35.7), (13, 34.8),
+        (14, 33.5), (15, 32.5), (16, 32.1), (17, 32.5),
+        (18, 32.5), (19, 31.8), (21, 31), (-5.5, 31),
+    ],
+    # Egypt and the Levant.
+    [
+        (25, 31), (25, 32.5), (26, 32.3), (27, 31.8),
+        (28, 31.4), (29, 31.3), (30, 31.2), (31, 31.3),
+        (32, 31.5), (33, 31.5), (34, 31.2), (35, 31),
+        (37, 31), (37, 33), (36, 33.5), (35, 34),
+        (34, 34.5), (33, 35), (32, 35.5), (31, 35.8),
+        (30, 35.5), (29, 35), (28, 34.5), (27, 34),
+        (26, 33),
+    ],
+]
+
+# Large islands and island groups. Small rings are approximate.
+LAND += [
+    [(12.4, 38.2), (13.5, 38.3), (15.2, 37.2),
+     (15.1, 36.6), (13.8, 36.7), (12.5, 37.2)],  # Sicily
+    [(8.1, 41.2), (9.8, 41.2), (9.7, 39), (8.5, 38.8),
+     (8.1, 39.8)],  # Sardinia
+    [(8.5, 43), (9.6, 43), (9.5, 41.4), (8.8, 41.3)],  # Corsica
+    [(1.1, 39.9), (4.4, 40.1), (4.3, 38.6), (1.2, 38.7)],  # Balearics
+    [(14.1, 36.1), (14.6, 36.1), (14.6, 35.8), (14.2, 35.8)],  # Malta
+    [(11.9, 36.9), (12, 36.9), (12, 36.7), (11.9, 36.7)],
+    [(12.5, 35.6), (12.7, 35.6), (12.7, 35.4), (12.5, 35.4)],
+    [(23.4, 35.7), (26.3, 35.7), (26.2, 34.8), (23.5, 34.9)],  # Crete
+    [(27.7, 36.5), (28.3, 36.5), (28.3, 35.8), (27.8, 35.8)],  # Rhodes
+    [(25, 39), (25.8, 39), (25.8, 38.4), (25.1, 38.4)],
+    [(24, 40), (24.5, 40), (24.5, 39.4), (24.1, 39.4)],
+    [(22.5, 39), (23, 39), (23, 38.3), (22.5, 38.3)],
+    [(26.1, 40.2), (26.7, 40.2), (26.7, 39.5), (26.2, 39.5)],
+    [(20.5, 38), (21, 38), (21, 37.5), (20.5, 37.5)],
+    [(19.4, 39), (20, 39), (20, 38.4), (19.4, 38.4)],
+    [(24.4, 37.8), (25, 37.8), (25, 37.2), (24.4, 37.2)],
+    [(32.2, 35.7), (34.6, 35.7), (34.5, 34.5), (32.3, 34.5)],  # Cyprus
+    [(14, 44), (15, 44), (15, 42), (14, 42)],
+    [(18.3, 40.5), (19, 40.5), (19, 39.8), (18.3, 39.8)],
+    [(3, 39.8), (3.5, 39.8), (3.5, 39.4), (3, 39.4)],
+    [(-3.1, 35), (-2.8, 35), (-2.8, 34.8), (-3.1, 34.8)],
+]
+
+# Black Sea cutout from the broad Europe/Anatolia land rings.
+WATER = [[
+    (27, 42), (29, 42.8), (32, 43), (35, 42.5),
+    (37, 41.8), (37, 45), (27, 45),
+]]
+
+
+def inside_ring(lon, lat, ring):
+    """Ray-crossing point-in-polygon test."""
+    inside = False
+    j = len(ring) - 1
+    for i, (xi, yi) in enumerate(ring):
+        xj, yj = ring[j]
+        if (yi > lat) != (yj > lat):
+            crossing_lon = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < crossing_lon:
+                inside = not inside
+        j = i
+    return inside
+
+
+def make_matrix():
+    result = np.zeros((len(LATS), len(LONS)), dtype=np.uint8)
+    for row, lat in enumerate(LATS):
+        for col, lon in enumerate(LONS):
+            if any(inside_ring(lon, lat, ring) for ring in LAND):
+                result[row, col] = 1
+            if any(inside_ring(lon, lat, ring) for ring in WATER):
+                result[row, col] = 0
+    return result
+
+
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    matrix = make_matrix()
+
+    assert matrix.shape == (71, 231)
+    assert matrix.size == 16401
+    assert np.isin(matrix, (0, 1)).all()
+
+    with (OUT / "candidate.csv").open("w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # PIL mode "L": 0 is black water, 255 is white land.
+    image = Image.fromarray(matrix * 255, mode="L")
+    image.save(OUT / "candidate.png")
+    enlarged = image.resize((1848, 568), resample=Image.Resampling.NEAREST)
+    enlarged.save(OUT / "candidate_8x.png")
+
+    # Validate CSV shape/content and exact nearest-neighbor enlargement.
+    with (OUT / "candidate.csv").open(newline="", encoding="ascii") as f:
+        rows = list(csv.reader(f))
+    assert len(rows) == 71 and all(len(row) == 231 for row in rows)
+    assert all(value in {"0", "1"} for row in rows for value in row)
+    assert image.size == (231, 71)
+    assert set(image.getdata()) <= {0, 255}
+    assert enlarged.size == (1848, 568)
+    assert enlarged.resize((231, 71), Image.Resampling.NEAREST).tobytes() == image.tobytes()
+
+
+if __name__ == "__main__":
+    main()
+```

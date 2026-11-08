@@ -1,0 +1,84 @@
+{
+  "run_id": "20261028-183708_LongCat-2.5-Preview_arctic01_g3_541b5a44",
+  "channel": "G",
+  "batch_id": "batch-14",
+  "started_at": "2026-10-28T18:37:08+08:00",
+  "finished_at": "2026-10-28T18:50:13+08:00",
+  "duration_sec": 784.9,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 12,
+  "request_retries": 3,
+  "model": "LongCat-2.5-Preview",
+  "model_display": "LongCat 2.5 Preview",
+  "task": "arctic01",
+  "task_label": "北极航道 0.1°",
+  "group": 3,
+  "prompt_sha256": "205d51ed38107ba41e78ddad7dfa494a67a168460679facc9216349cc5498684",
+  "error": "",
+  "score": {
+    "errors": 6790,
+    "correct": 7911,
+    "score": 7911,
+    "max_score": 14701,
+    "cells": 14701,
+    "accuracy_pct": 53.812665805047274,
+    "normalized": 8717.651860417658,
+    "extra_land": 4330,
+    "missing_land": 2460,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 46.16692741990341,
+    "flip_horizontal_accuracy": 52.72430446908374
+  },
+  "map_metrics": {
+    "accuracy_pct": 53.812666,
+    "hss": 0.088981,
+    "boundary_f1_d0": 0.154492,
+    "boundary_f1_d1": 0.297816,
+    "boundary_f1_d2": 0.403605,
+    "narrow_water_keep": 0.170213,
+    "narrow_water_cells": 141,
+    "island_iou_median": 0.002505,
+    "island_iou_area_weighted": 0.148081,
+    "island_iou_ge50": 0.0,
+    "component_recall": 0.088235,
+    "n_ref_components": 34,
+    "n_pred_components": 5,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {
+    "candidate.png": "runs/20261028-183708_LongCat-2.5-Preview_arctic01_g3_541b5a44/candidate.png",
+    "candidate_8x.png": "runs/20261028-183708_LongCat-2.5-Preview_arctic01_g3_541b5a44/candidate_8x.png",
+    "candidate.csv": "runs/20261028-183708_LongCat-2.5-Preview_arctic01_g3_541b5a44/candidate.csv",
+    "diff.png": "runs/20261028-183708_LongCat-2.5-Preview_arctic01_g3_541b5a44/diff.png",
+    "script.py": "runs/20261028-183708_LongCat-2.5-Preview_arctic01_g3_541b5a44/script.py",
+    "last_message.txt": "runs/20261028-183708_LongCat-2.5-Preview_arctic01_g3_541b5a44/last_message.txt"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "run_id": "20261028-082234_gpt-6.1-sol_seto_g2_5ce96e28",
+  "channel": "E",
+  "batch_id": "batch-12",
+  "started_at": "2026-10-28T08:22:34+08:00",
+  "finished_at": "2026-10-28T08:28:27+08:00",
+  "duration_sec": 353.1,
+  "status": "failed",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 2,
+  "request_retries": 8,
+  "model": "gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "seto",
+  "task_label": "濑户内海 2/63°",
+  "group": 2,
+  "prompt_sha256": "551d6fb3df8fe61af981ea454ba6fed3f898405e2c81a6cf0981578386d8f3c1",
+  "error": "RuntimeError: {\"type\": \"response.failed\", \"sequence_number\": 0, \"response\": {\"id\": \"resp_26fcce88b67b402fa5ceeccb5baed273\", \"object\": \"response\", \"created_at\": 1793147307, \"model\": \"gpt-6.1-sol\", \"status\": \"failed\", \"output\": [], \"error\": {\"code\": \"upstream_error\", \"message\": \"Upstream service temporarily unavailable\"}}}",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "last_message.txt": "runs/20261028-082234_gpt-6.1-sol_seto_g2_5ce96e28/last_message.txt"
+  }
+}

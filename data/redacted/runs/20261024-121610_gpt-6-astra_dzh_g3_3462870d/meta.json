@@ -1,0 +1,30 @@
+{
+  "run_id": "20261024-121610_gpt-6-astra_dzh_g3_3462870d",
+  "channel": "OR",
+  "batch_id": "batch-02",
+  "started_at": "2026-10-24T12:16:10+08:00",
+  "finished_at": "2026-10-24T12:20:18+08:00",
+  "duration_sec": 248.2,
+  "status": "failed",
+  "returncode": 403,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": null,
+  "model": "openai/gpt-6-astra",
+  "model_display": "GPT 6 Astra",
+  "task": "dzh",
+  "task_label": "地中海 0.2°",
+  "group": 3,
+  "prompt_sha256": "ed60d2d0403da116ee920e35b57d8eca0509572e4331d15e0459b831ea2f9894",
+  "error": "HTTPError 403: Forbidden",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "response_error.txt": "runs/20261024-121610_gpt-6-astra_dzh_g3_3462870d/response_error.txt"
+  }
+}

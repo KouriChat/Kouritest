@@ -1,0 +1,30 @@
+{
+  "run_id": "20261029-084501_gpt-6.1-sol_dzh_g1_48b728a7",
+  "channel": "S1",
+  "batch_id": "batch-15",
+  "started_at": "2026-10-29T08:45:02+08:00",
+  "finished_at": "2026-10-29T08:50:45+08:00",
+  "duration_sec": 342.8,
+  "status": "failed",
+  "returncode": 502,
+  "timed_out": false,
+  "early_complete": null,
+  "backend": "api",
+  "transport": "direct",
+  "reasoning_effort": "high",
+  "tool_calls": null,
+  "request_retries": null,
+  "model": "gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "dzh",
+  "task_label": "地中海 0.2°",
+  "group": 1,
+  "prompt_sha256": "ed60d2d0403da116ee920e35b57d8eca0509572e4331d15e0459b831ea2f9894",
+  "error": "HTTPError 502: {\"error\":{\"message\":\"Upstream service temporarily unavailable\",\"type\":\"upstream_error\"}}",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "response_error.txt": "runs/20261029-084501_gpt-6.1-sol_dzh_g1_48b728a7/response_error.txt"
+  }
+}

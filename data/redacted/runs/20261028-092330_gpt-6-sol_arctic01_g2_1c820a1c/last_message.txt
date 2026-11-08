@@ -1,0 +1,375 @@
+下面脚本使用手写近似多边形表示加拿大北极群岛主要岛屿、半岛和零散岛屿。每个采样点通过点在多边形内判断，纬度按 79N 到 73N、经度按 105W 到 81W 生成。脚本不联网、不读取外部地图数据。
+
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+
+# Grid order:
+# rows: 79N, 78.9N, ..., 73N
+# cols: 105W, 104.9W, ..., 81W
+LAT_NORTH = 79.0
+LAT_SOUTH = 73.0
+LON_WEST = -105.0
+LON_EAST = -81.0
+STEP = 0.1
+
+
+def polygon(*points):
+    return np.asarray(points, dtype=np.float64)
+
+
+def inside_polygon(x, y, p):
+    """Vectorized point-in-polygon test using the even-odd rule."""
+    x0 = p[:, 0, None]
+    y0 = p[:, 1, None]
+    x1 = np.roll(p[:, 0], -1)[:, None]
+    y1 = np.roll(p[:, 1], -1)[:, None]
+
+    yy = y[None, :]
+    xx = x[None, :]
+
+    crosses = (y0 > yy) != (y1 > yy)
+    denominator = y1 - y0
+    denominator = np.where(denominator == 0.0, 1e-30, denominator)
+
+    x_intersection = x0 + (yy - y0) * (x1 - x0) / denominator
+    crossings_to_right = crosses & (xx < x_intersection)
+
+    return (np.sum(crossings_to_right, axis=0) % 2) == 1
+
+
+# Hand-authored approximate land polygons.
+# Coordinates are longitude, latitude.
+LAND_POLYGONS = [
+    # Axel Heiberg Island.
+    polygon(
+        (-98.5, 79.2),
+        (-98.2, 78.5),
+        (-97.4, 77.8),
+        (-96.0, 77.2),
+        (-94.0, 76.7),
+        (-92.2, 76.5),
+        (-91.3, 76.9),
+        (-91.1, 77.8),
+        (-91.4, 79.2),
+    ),
+
+    # Ellesmere Island, only the western part visible in the frame.
+    polygon(
+        (-90.0, 79.2),
+        (-90.0, 78.5),
+        (-89.3, 77.9),
+        (-88.2, 77.4),
+        (-86.2, 76.9),
+        (-83.8, 77.0),
+        (-81.0, 77.5),
+        (-80.5, 78.3),
+        (-80.5, 79.2),
+    ),
+
+    # Devon Island.
+    polygon(
+        (-97.2, 76.3),
+        (-94.5, 76.6),
+        (-91.0, 76.7),
+        (-87.0, 76.8),
+        (-84.0, 76.9),
+        (-82.0, 76.3),
+        (-82.2, 75.5),
+        (-83.0, 74.9),
+        (-85.5, 74.6),
+        (-89.0, 74.4),
+        (-92.0, 74.5),
+        (-94.3, 74.7),
+        (-96.6, 75.2),
+    ),
+
+    # Bathurst Island.
+    polygon(
+        (-101.3, 76.8),
+        (-98.8, 77.0),
+        (-96.5, 76.8),
+        (-94.5, 76.4),
+        (-93.6, 75.9),
+        (-94.8, 75.5),
+        (-97.0, 75.3),
+        (-99.4, 75.5),
+        (-101.2, 76.0),
+    ),
+
+    # Cornwallis Island.
+    polygon(
+        (-97.8, 76.2),
+        (-96.0, 76.5),
+        (-93.6, 76.4),
+        (-91.8, 75.8),
+        (-91.7, 75.1),
+        (-93.8, 74.7),
+        (-96.2, 74.9),
+        (-97.5, 75.5),
+    ),
+
+    # Melville Island.
+    polygon(
+        (-108.0, 76.2),
+        (-105.0, 76.3),
+        (-102.2, 76.1),
+        (-100.0, 75.6),
+        (-98.0, 75.1),
+        (-96.0, 74.8),
+        (-93.0, 74.6),
+        (-90.7, 74.1),
+        (-90.3, 73.7),
+        (-92.3, 73.4),
+        (-96.0, 73.4),
+        (-100.0, 73.6),
+        (-104.0, 74.0),
+        (-107.0, 74.9),
+    ),
+
+    # Eglinton Island and nearby western islands.
+    polygon(
+        (-105.5, 76.2),
+        (-104.0, 76.5),
+        (-102.8, 76.1),
+        (-102.4, 75.5),
+        (-103.4, 75.0),
+        (-105.2, 75.2),
+        (-105.8, 75.7),
+    ),
+
+    # Byam Martin Island.
+    polygon(
+        (-95.4, 76.6),
+        (-93.4, 76.7),
+        (-91.8, 76.3),
+        (-91.5, 75.8),
+        (-92.5, 75.4),
+        (-94.5, 75.5),
+        (-95.5, 76.0),
+    ),
+
+    # Little Cornwallis Island.
+    polygon(
+        (-96.0, 75.4),
+        (-94.8, 75.5),
+        (-94.2, 75.1),
+        (-94.9, 74.8),
+        (-96.0, 74.9),
+    ),
+
+    # North Kent Island and adjacent small islands.
+    polygon(
+        (-91.0, 77.3),
+        (-89.8, 77.5),
+        (-88.8, 77.1),
+        (-89.2, 76.5),
+        (-90.5, 76.4),
+        (-91.2, 76.8),
+    ),
+
+    # Small island group near the eastern side of Devon Island.
+    polygon(
+        (-85.1, 76.8),
+        (-83.9, 77.0),
+        (-83.1, 76.7),
+        (-83.4, 76.2),
+        (-84.6, 76.1),
+        (-85.2, 76.4),
+    ),
+
+    # Prince of Wales Island.
+    polygon(
+        (-102.5, 74.0),
+        (-100.5, 74.5),
+        (-98.2, 74.4),
+        (-96.5, 73.9),
+        (-96.6, 73.2),
+        (-98.5, 72.9),
+        (-101.0, 73.0),
+        (-102.7, 73.4),
+    ),
+
+    # Somerset Island.
+    polygon(
+        (-96.5, 74.3),
+        (-94.0, 74.5),
+        (-91.8, 74.2),
+        (-90.0, 73.7),
+        (-89.4, 73.1),
+        (-90.0, 72.7),
+        (-92.2, 72.6),
+        (-94.5, 72.8),
+        (-96.2, 73.3),
+    ),
+
+    # Boothia Peninsula, whose northern part enters the southern edge
+    # of the requested frame.
+    polygon(
+        (-95.6, 73.0),
+        (-95.0, 73.4),
+        (-93.5, 73.7),
+        (-91.6, 73.6),
+        (-90.0, 73.2),
+        (-89.0, 72.4),
+        (-88.0, 71.0),
+        (-87.8, 69.5),
+        (-97.0, 69.5),
+        (-97.2, 71.4),
+        (-96.5, 72.4),
+    ),
+
+    # Small island near the western entrance to Lancaster Sound.
+    polygon(
+        (-100.2, 75.2),
+        (-99.2, 75.5),
+        (-98.4, 75.1),
+        (-98.7, 74.7),
+        (-99.8, 74.8),
+    ),
+
+    # Small islands in the channels between Melville and Prince of Wales.
+    polygon(
+        (-101.8, 74.5),
+        (-100.8, 74.8),
+        (-100.0, 74.5),
+        (-100.2, 74.0),
+        (-101.2, 73.9),
+        (-101.9, 74.2),
+    ),
+
+    # Small island south of Cornwallis Island.
+    polygon(
+        (-94.0, 74.3),
+        (-93.2, 74.5),
+        (-92.5, 74.2),
+        (-92.7, 73.8),
+        (-93.6, 73.8),
+    ),
+]
+
+
+def build_matrix():
+    lats = np.round(
+        np.arange(LAT_NORTH, LAT_SOUTH - STEP / 2.0, -STEP),
+        10,
+    )
+    lons = np.round(
+        np.arange(LON_WEST, LON_EAST + STEP / 2.0, STEP),
+        10,
+    )
+
+    if len(lats) != 61 or len(lons) != 241:
+        raise RuntimeError("Unexpected grid dimensions")
+
+    lon_grid, lat_grid = np.meshgrid(lons, lats)
+    flat_lon = lon_grid.reshape(-1)
+    flat_lat = lat_grid.reshape(-1)
+
+    land = np.zeros(flat_lon.shape, dtype=bool)
+
+    for p in LAND_POLYGONS:
+        land |= inside_polygon(flat_lon, flat_lat, p)
+
+    matrix = land.astype(np.uint8).reshape(len(lats), len(lons))
+
+    if matrix.shape != (61, 241):
+        raise RuntimeError("Matrix is not 61 by 241")
+
+    if matrix.size != 14701:
+        raise RuntimeError("Unexpected matrix size")
+
+    if not np.all((matrix == 0) | (matrix == 1)):
+        raise RuntimeError("Matrix contains values other than 0 and 1")
+
+    return matrix
+
+
+def write_outputs(matrix):
+    output_dir = Path.cwd() / "outputs"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = output_dir / "candidate.csv"
+    png_path = output_dir / "candidate.png"
+    png_8x_path = output_dir / "candidate_8x.png"
+
+    with csv_path.open("w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # White is land (1), black is water (0).
+    image_array = (matrix * 255).astype(np.uint8)
+    image = Image.fromarray(image_array, mode="L")
+
+    if image.size != (241, 61):
+        raise RuntimeError("Unexpected original image dimensions")
+
+    image.save(png_path, format="PNG")
+
+    resampling = (
+        Image.Resampling.NEAREST
+        if hasattr(Image, "Resampling")
+        else Image.NEAREST
+    )
+    enlarged = image.resize((241 * 8, 61 * 8), resample=resampling)
+
+    if enlarged.size != (1928, 488):
+        raise RuntimeError("Unexpected enlarged image dimensions")
+
+    enlarged.save(png_8x_path, format="PNG")
+
+    # Validate CSV contents after writing.
+    with csv_path.open("r", newline="", encoding="ascii") as f:
+        rows = list(csv.reader(f))
+
+    if len(rows) != 61:
+        raise RuntimeError("CSV does not contain 61 rows")
+
+    if any(len(row) != 241 for row in rows):
+        raise RuntimeError("CSV contains a row with an incorrect length")
+
+    if any(value not in {"0", "1"} for row in rows for value in row):
+        raise RuntimeError("CSV contains a value other than 0 or 1")
+
+    # Validate that both PNGs contain only black and white.
+    original_values = set(np.unique(np.asarray(image)).tolist())
+    enlarged_values = set(np.unique(np.asarray(enlarged)).tolist())
+
+    if not original_values.issubset({0, 255}):
+        raise RuntimeError("Original PNG is not strictly black and white")
+
+    if not enlarged_values.issubset({0, 255}):
+        raise RuntimeError("Enlarged PNG is not strictly black and white")
+
+    return csv_path, png_path, png_8x_path
+
+
+def main():
+    matrix = build_matrix()
+    paths = write_outputs(matrix)
+
+    print("matrix:", matrix.shape, "values:", matrix.size)
+    for path in paths:
+        print(path)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+运行依赖：
+
+```bash
+pip install numpy Pillow
+python generate_map.py
+```
+
+输出文件为：
+
+- `outputs/candidate.csv`
+- `outputs/candidate.png`
+- `outputs/candidate_8x.png`

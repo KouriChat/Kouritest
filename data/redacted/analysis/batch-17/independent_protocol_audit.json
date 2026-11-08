@@ -1,0 +1,28 @@
+{
+  "review": "Independent subagent protocol audit, integrated by main agent",
+  "scope": "six formal lowhigh_6map archives; metadata, request_target, responses and current runner source",
+  "low_arm": {
+    "result_records": 60,
+    "effort_low_in_all_result_records": true,
+    "visible_final_responses": 36,
+    "visible_response_effort_low": true,
+    "server_execution_for_failed_records": "unverifiable without complete responses"
+  },
+  "api_output_limit": {
+    "source_hardcoded_max_output_tokens": 30000,
+    "cli_max_output_tokens_propagated": false,
+    "response_max_output_tokens": null,
+    "actual_server_limit": "not verified"
+  },
+  "observed_endpoints": {
+    "S1": "[redacted-endpoint]",
+    "S2": "[redacted-endpoint]"
+  },
+  "proxy_protocol_exclusions": 2,
+  "evidence_limits": [
+    "Full sent request bodies and original command lines are not archived.",
+    "Effort evidence comes from run metadata and server response echoes.",
+    "The declared model identity and actual internal reasoning budget cannot be verified.",
+    "New channel-C endpoint differs from the historical direct endpoint; label alone does not verify same upstream service."
+  ]
+}

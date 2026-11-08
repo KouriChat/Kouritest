@@ -1,0 +1,13 @@
+effort,d,provider,task,planned,attempts,valid,failed,skipped,other_status,missing,success_rate
+high,0,C,seto,2,2,2,0,0,0,0,1.0
+high,0,C,hecate,2,2,2,0,0,0,0,1.0
+high,0,F,seto,2,2,1,1,0,0,0,0.5
+high,0,F,hecate,2,2,2,0,0,0,0,1.0
+medium,1,C,seto,2,1,0,0,0,1,1,0.0
+medium,1,C,hecate,2,1,1,0,0,0,1,1.0
+medium,1,F,seto,2,1,1,0,0,0,1,1.0
+medium,1,F,hecate,2,1,1,0,0,0,1,1.0
+low,2,C,seto,2,2,2,0,0,0,0,1.0
+low,2,C,hecate,2,2,1,0,0,1,0,0.5
+low,2,F,seto,2,2,1,0,0,1,0,0.5
+low,2,F,hecate,2,2,1,0,0,1,0,0.5

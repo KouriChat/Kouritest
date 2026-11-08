@@ -1,0 +1,9 @@
+perturbation,metric,expected,n,median_delta,min_delta,max_delta,passes_all
+boundary_shift,acc,decrease,12,-0.10199323793342135,-0.1814067549475582,-0.052000100637360325,True
+boundary_shift,bf1_1,decrease,12,-0.21005283276424336,-0.47088453499548927,-0.007658502374732756,True
+island_deletion,acc,decrease,9,-0.003959015290332694,-0.0157333588312988,-0.0009806638618781542,True
+island_deletion,iou_med,decrease,9,0.0,-0.8333333333333334,0.0,True
+island_deletion,component_recall,decrease,9,-0.2928507151652932,-0.7341545893719806,-0.09636141896372076,True
+narrow_water_fill,narrow_keep,decrease,3,-0.4913234331124652,-1.0,-0.2489848448793609,True
+spurious_land,acc,decrease,3,-0.006306259478551568,-0.025225037914206345,0.0,True
+spurious_land,bf1_1,decrease,3,-0.013239279036871603,-0.029292608852407413,0.0,True

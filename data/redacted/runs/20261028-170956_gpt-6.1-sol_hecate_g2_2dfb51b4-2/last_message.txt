@@ -1,0 +1,133 @@
+本次无法实际运行脚本或展示生成后的图片；以下是可独立运行的生成器。它用手写的近似经纬度多边形表示海岸线与较大的岛屿，再按每个采样点是否落入陆地多边形生成矩阵；这不是逐点独立推理，细小岛礁也未必能完整还原。依赖：`numpy`、`Pillow`。
+
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+
+# Approximate hand-drawn geographic outlines. Coordinates are (longitude, latitude).
+# The mainland polygon follows the coast in broad strokes; the box boundary closes it.
+MAINLAND = [
+    (-130.15, 55.00), (-130.10, 54.88), (-130.18, 54.78),
+    (-130.05, 54.68), (-130.14, 54.57), (-130.05, 54.46),
+    (-129.96, 54.36), (-129.87, 54.25), (-129.78, 54.16),
+    (-129.67, 54.07), (-129.58, 53.97), (-129.49, 53.88),
+    (-129.39, 53.77), (-129.28, 53.67), (-129.18, 53.57),
+    (-129.09, 53.47), (-129.00, 53.37), (-129.00, 53.00),
+    (-131.00, 53.00), (-131.00, 55.00),
+]
+
+# Graham Island: western and northern shores are outside or near the box;
+# eastern shore faces Hecate Strait.
+GRAHAM = [
+    (-131.00, 54.92), (-130.90, 54.90), (-130.80, 54.86),
+    (-130.70, 54.81), (-130.61, 54.76), (-130.55, 54.70),
+    (-130.48, 54.65), (-130.40, 54.60), (-130.34, 54.54),
+    (-130.28, 54.47), (-130.25, 54.40), (-130.29, 54.33),
+    (-130.35, 54.27), (-130.42, 54.21), (-130.50, 54.17),
+    (-130.59, 54.12), (-130.66, 54.08), (-130.74, 54.04),
+    (-130.82, 54.00), (-130.90, 53.97), (-131.00, 53.96),
+    (-131.00, 54.92),
+]
+
+# Moresby Island's north end enters the southern edge of the sampling frame.
+MORESBY = [
+    (-131.00, 53.55), (-130.94, 53.52), (-130.88, 53.48),
+    (-130.81, 53.44), (-130.75, 53.40), (-130.69, 53.35),
+    (-130.64, 53.30), (-130.60, 53.25), (-130.56, 53.20),
+    (-130.52, 53.15), (-130.49, 53.10), (-130.46, 53.05),
+    (-130.43, 53.00), (-131.00, 53.00),
+]
+
+# Larger nearshore islands and prominent island groups, deliberately generalized.
+ISLANDS = [
+    [(-130.68, 54.94), (-130.60, 54.93), (-130.56, 54.89),
+     (-130.59, 54.84), (-130.65, 54.83), (-130.70, 54.87)],
+    [(-130.53, 54.79), (-130.48, 54.78), (-130.44, 54.74),
+     (-130.47, 54.70), (-130.52, 54.71)],
+    [(-130.45, 54.57), (-130.39, 54.55), (-130.36, 54.51),
+     (-130.39, 54.47), (-130.44, 54.49)],
+    [(-130.38, 54.39), (-130.33, 54.37), (-130.31, 54.33),
+     (-130.35, 54.30), (-130.39, 54.33)],
+    [(-130.34, 54.20), (-130.28, 54.18), (-130.25, 54.14),
+     (-130.28, 54.10), (-130.33, 54.13)],
+    [(-130.24, 53.98), (-130.19, 53.96), (-130.17, 53.92),
+     (-130.21, 53.89), (-130.25, 53.92)],
+    [(-130.24, 53.76), (-130.19, 53.74), (-130.16, 53.70),
+     (-130.20, 53.67), (-130.25, 53.70)],
+    [(-130.22, 53.58), (-130.17, 53.56), (-130.14, 53.52),
+     (-130.18, 53.49), (-130.23, 53.52)],
+    [(-130.56, 53.87), (-130.51, 53.85), (-130.49, 53.81),
+     (-130.53, 53.78), (-130.58, 53.81)],
+    [(-130.72, 53.67), (-130.67, 53.65), (-130.64, 53.61),
+     (-130.68, 53.58), (-130.73, 53.61)],
+    [(-130.84, 53.34), (-130.79, 53.32), (-130.77, 53.28),
+     (-130.81, 53.25), (-130.86, 53.28)],
+]
+
+
+def point_on_segment(x, y, ax, ay, bx, by, eps=1e-10):
+    cross = (x - ax) * (by - ay) - (y - ay) * (bx - ax)
+    if abs(cross) > eps:
+        return False
+    return (min(ax, bx) - eps <= x <= max(ax, bx) + eps
+            and min(ay, by) - eps <= y <= max(ay, by) + eps)
+
+
+def inside_polygon(lon, lat, polygon):
+    """Ray casting; boundary points are classified as land."""
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if point_on_segment(lon, lat, xi, yi, xj, yj):
+            return True
+        if (yi > lat) != (yj > lat):
+            crossing_lon = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < crossing_lon:
+                inside = not inside
+        j = i
+    return inside
+
+
+def main():
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # The requested interval is 2/126 degrees, yielding 127 samples per axis.
+    latitudes = np.linspace(55.0, 53.0, 127)
+    longitudes = np.linspace(-131.0, -129.0, 127)
+    land_polygons = [MAINLAND, GRAHAM, MORESBY, *ISLANDS]
+
+    matrix = np.zeros((127, 127), dtype=np.uint8)
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            matrix[row, col] = int(
+                any(inside_polygon(float(lon), float(lat), polygon)
+                    for polygon in land_polygons)
+            )
+
+    with (output_dir / "candidate.csv").open("w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # Land is white; water is black.
+    image = Image.fromarray(matrix * 255, mode="L").convert("RGB")
+    image.save(output_dir / "candidate.png")
+    enlarged = image.resize((1016, 1016), resample=Image.Resampling.NEAREST)
+    enlarged.save(output_dir / "candidate_8x.png")
+
+    assert matrix.shape == (127, 127)
+    assert matrix.size == 16129
+    assert set(np.unique(matrix)).issubset({0, 1})
+    assert image.size == (127, 127)
+    assert enlarged.size == (1016, 1016)
+    assert set(image.getdata()).issubset({(0, 0, 0), (255, 255, 255)})
+
+
+if __name__ == "__main__":
+    main()
+```

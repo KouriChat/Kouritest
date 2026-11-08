@@ -1,0 +1,85 @@
+import os
+import numpy as np
+from PIL import Image
+
+NROW, NCOL = 64, 253
+STEP = 2.0 / 63.0
+LON = 129.0 + np.arange(NCOL) * (8.0 / (NCOL - 1))
+LAT = 35.0 - np.arange(NROW) * STEP
+LON2D, LAT2D = np.meshgrid(LON, LAT)
+OUT = "outputs"
+os.makedirs(OUT, exist_ok=True)
+
+
+def poly_mask(poly):
+    inside = np.zeros((NROW, NCOL), dtype=bool)
+    n = len(poly)
+    for i in range(n):
+        xi, yi = poly[i]
+        xj, yj = poly[(i - 1) % n]
+        cond = ((yi > LAT2D) != (yj > LAT2D)) & \
+               (LON2D < (xj - xi) * (LAT2D - yi) / (yj - yi) + xi)
+        inside ^= cond
+    return inside
+
+
+def circ_mask(cx, cy, r):
+    return (LON2D - cx) ** 2 + (LAT2D - cy) ** 2 <= r * r
+
+
+LAND = np.zeros((NROW, NCOL), dtype=bool)
+
+P_HONSHU = [
+    (130.95, 33.96), (131.50, 34.10), (132.10, 34.20), (132.45, 34.42),
+    (132.80, 34.30), (133.10, 34.42), (133.60, 34.55), (134.10, 34.68),
+    (134.50, 34.55), (134.90, 34.62), (135.25, 34.60), (135.40, 34.65),
+    (135.60, 34.40), (135.80, 33.50), (135.95, 33.90), (136.20, 34.30),
+    (136.50, 34.60), (136.80, 34.72), (137.00, 34.65), (137.00, 35.00),
+    (130.95, 35.00),
+]
+P_KYUSHU = [
+    (129.90, 33.90), (130.20, 33.70), (130.45, 33.58), (130.65, 33.70),
+    (130.85, 33.90), (131.05, 33.85), (131.30, 33.60), (131.50, 33.30),
+    (131.60, 33.00), (129.85, 33.00), (129.85, 33.60), (129.90, 33.90),
+]
+P_SHIKOKU = [
+    (132.00, 33.45), (132.50, 33.85), (133.00, 34.00), (133.50, 34.05),
+    (134.00, 34.10), (134.40, 34.15), (134.65, 34.20), (134.80, 33.90),
+    (134.60, 33.60), (134.20, 33.30), (133.80, 33.50), (133.40, 33.55),
+    (133.00, 33.50), (132.50, 33.30), (132.00, 33.45),
+]
+P_AWAJI = [
+    (134.55, 34.15), (135.15, 34.15), (135.15, 34.35), (134.90, 34.45),
+    (134.60, 34.40), (134.55, 34.25),
+]
+P_TSUMASHI = [
+    (129.10, 34.30), (129.50, 34.28), (129.55, 34.50), (129.25, 34.62),
+    (129.05, 34.45),
+]
+for _p in (P_HONSHU, P_KYUSHU, P_SHIKOKU, P_AWAJI, P_TSUMASHI):
+    LAND |= poly_mask(_p)
+
+ISLANDS = [
+    (129.70, 33.80, 0.05), (132.70, 34.25, 0.06), (132.80, 34.12, 0.05),
+    (132.20, 34.30, 0.04), (133.00, 34.25, 0.05), (133.20, 34.30, 0.04),
+    (133.60, 34.20, 0.04), (133.80, 34.35, 0.04), (134.10, 34.42, 0.04),
+    (134.30, 34.35, 0.035), (134.60, 34.25, 0.04), (134.00, 34.55, 0.03),
+    (135.10, 34.30, 0.035), (133.55, 33.55, 0.04),
+]
+for _c in ISLANDS:
+    LAND |= circ_mask(*_c)
+
+MATRIX = LAND.astype(np.uint8)
+assert MATRIX.shape == (NROW, NCOL)
+
+with open(os.path.join(OUT, "candidate.csv"), "w") as fh:
+    for row in MATRIX:
+        fh.write("".join(str(int(v)) for v in row) + "\n")
+
+img = np.where(LAND, 255, 0).astype(np.uint8)
+im = Image.fromarray(img, mode="L")
+im.save(os.path.join(OUT, "candidate.png"))
+im.resize((NCOL * 8, NROW * 8), Image.NEAREST).save(
+    os.path.join(OUT, "candidate_8x.png"))
+
+print("matrix", MATRIX.shape, "land cells", int(MATRIX.sum()))

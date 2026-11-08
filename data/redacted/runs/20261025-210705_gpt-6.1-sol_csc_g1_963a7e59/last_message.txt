@@ -1,0 +1,290 @@
+下面脚本仅使用手写的近似大陆、岛屿、礁盘和海岸线规则，不联网、不读取外部地理数据。运行后会在当前目录创建 `outputs/` 并生成所需文件。
+
+```python
+from pathlib import Path
+import csv
+import math
+
+import numpy as np
+from PIL import Image
+
+
+OUT_DIR = Path("outputs")
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+N_ROWS = 111
+N_COLS = 141
+LAT_MAX = 23.0
+LON_MIN = 99.0
+STEP = 0.2
+
+
+def point_in_polygon(x, y, polygon):
+    """射线法判断点是否在多边形内；边界按陆地处理。"""
+    inside = False
+    n = len(polygon)
+
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+
+        cross = (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1)
+        if abs(cross) < 1e-10:
+            if (
+                min(x1, x2) - 1e-10 <= x <= max(x1, x2) + 1e-10
+                and min(y1, y2) - 1e-10 <= y <= max(y1, y2) + 1e-10
+            ):
+                return True
+
+        if (y1 > y) != (y2 > y):
+            xinters = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+            if x < xinters:
+                inside = not inside
+
+    return inside
+
+
+def in_ellipse(lon, lat, cx, cy, rx, ry):
+    return ((lon - cx) / rx) ** 2 + ((lat - cy) / ry) ** 2 <= 1.0
+
+
+# 手写近似陆地区域，坐标为 (经度, 纬度)。
+POLYGONS = [
+    # 中国大陆东南部
+    [
+        (99.0, 23.0), (117.5, 23.0), (117.4, 22.6),
+        (117.0, 22.1), (116.5, 21.7), (115.8, 21.35),
+        (115.0, 21.05), (114.0, 20.85), (112.8, 20.85),
+        (111.5, 21.10), (110.2, 21.35), (109.0, 21.60),
+        (108.0, 21.50), (107.4, 22.00), (106.0, 22.40),
+        (104.0, 22.70), (101.0, 22.85), (99.0, 22.85),
+    ],
+
+    # 中南半岛北部、越南、老挝、柬埔寨北部
+    [
+        (99.0, 22.90), (107.5, 22.90), (108.0, 21.50),
+        (107.8, 20.50), (107.5, 19.00), (107.2, 17.00),
+        (106.8, 15.00), (106.5, 13.00), (105.8, 11.00),
+        (104.8, 10.00), (104.0, 9.80), (103.0, 10.20),
+        (102.0, 11.00), (101.3, 12.50), (100.5, 14.50),
+        (99.7, 17.00), (99.0, 19.50),
+    ],
+
+    # 泰国南部及马来半岛
+    [
+        (99.1, 19.0), (100.0, 18.0), (100.5, 16.0),
+        (100.5, 14.0), (100.2, 12.0), (99.5, 10.0),
+        (99.2, 8.0), (99.4, 7.0), (100.2, 7.5),
+        (101.2, 7.2), (102.0, 6.6), (102.7, 5.6),
+        (103.3, 4.5), (103.8, 3.3), (104.2, 2.0),
+        (104.3, 1.0), (103.2, 1.0), (102.5, 2.2),
+        (101.6, 3.3), (100.7, 4.3), (99.8, 5.5),
+        (99.2, 6.5), (98.8, 7.0), (98.5, 10.0),
+        (98.5, 14.0), (98.8, 18.0),
+    ],
+
+    # 苏门答腊东北部
+    [
+        (99.0, 1.0), (105.0, 1.0), (104.2, 1.5),
+        (103.2, 2.2), (102.5, 3.0), (101.8, 4.0),
+        (100.5, 5.2), (99.5, 5.0), (98.5, 4.0),
+        (98.0, 2.0),
+    ],
+
+    # 婆罗洲
+    [
+        (109.0, 1.0), (118.0, 1.0), (118.5, 2.0),
+        (118.2, 4.0), (117.5, 5.5), (116.0, 6.5),
+        (114.5, 7.2), (112.0, 7.3), (110.0, 6.5),
+        (109.5, 5.0), (109.0, 3.0),
+    ],
+
+    # 台湾
+    [
+        (120.0, 22.0), (120.2, 23.0), (121.0, 23.5),
+        (122.0, 23.0), (121.8, 22.2), (121.3, 21.8),
+        (120.7, 21.8),
+    ],
+
+    # 菲律宾吕宋岛
+    [
+        (119.8, 18.5), (120.2, 19.5), (120.5, 20.5),
+        (121.2, 21.0), (122.0, 20.8), (122.2, 19.5),
+        (121.8, 18.0), (121.2, 16.5), (120.8, 15.0),
+        (120.3, 14.0), (119.5, 14.5), (119.2, 16.0),
+        (119.3, 17.5),
+    ],
+
+    # 菲律宾吕宋南部及比科尔半岛
+    [
+        (120.0, 14.8), (121.0, 14.5), (122.0, 14.0),
+        (123.0, 13.5), (123.5, 13.0), (123.0, 12.3),
+        (122.0, 12.5), (121.0, 13.0), (120.0, 13.8),
+    ],
+
+    # 民都洛岛
+    [
+        (120.0, 13.5), (121.2, 13.5), (121.8, 12.7),
+        (121.4, 11.8), (120.5, 11.7), (119.8, 12.5),
+    ],
+
+    # 巴拉望岛
+    [
+        (117.0, 11.5), (118.0, 12.0), (119.0, 11.0),
+        (119.5, 10.0), (119.0, 8.0), (118.3, 7.0),
+        (117.5, 8.5), (117.0, 10.0),
+    ],
+
+    # 棉兰老岛
+    [
+        (122.0, 10.0), (123.0, 10.0), (124.0, 9.5),
+        (125.5, 9.0), (126.5, 7.5), (126.0, 6.0),
+        (124.5, 5.0), (123.0, 5.5), (122.0, 7.0),
+        (121.5, 8.5),
+    ],
+
+    # 菲律宾中部若干较大岛屿
+    [
+        (122.5, 12.0), (123.5, 12.5), (124.5, 12.0),
+        (124.5, 11.0), (123.5, 10.5), (122.5, 11.0),
+    ],
+    [
+        (124.5, 11.5), (125.5, 12.0), (126.0, 11.0),
+        (125.5, 10.0), (124.5, 10.5),
+    ],
+]
+
+
+# 椭圆形式的小岛、礁石、礁盘。
+ELLIPSES = [
+    # 海南岛
+    (109.8, 19.2, 1.15, 0.62),
+
+    # 越南近岸及菲律宾外围较大岛屿
+    (108.3, 16.1, 0.16, 0.28),
+    (109.3, 12.0, 0.18, 0.30),
+    (123.1, 11.0, 0.18, 0.28),
+    (124.0, 10.2, 0.15, 0.22),
+
+    # 西沙群岛近似位置
+    (111.7, 16.6, 0.15, 0.11),
+    (112.0, 16.5, 0.11, 0.10),
+    (112.3, 16.8, 0.12, 0.10),
+    (111.3, 16.3, 0.10, 0.08),
+
+    # 南沙群岛及其礁盘近似位置
+    (112.7, 9.7, 0.13, 0.09),
+    (113.8, 8.7, 0.12, 0.08),
+    (114.1, 9.9, 0.11, 0.09),
+    (114.3, 10.4, 0.12, 0.10),
+    (114.3, 11.0, 0.12, 0.09),
+    (114.8, 10.0, 0.10, 0.08),
+    (115.5, 9.5, 0.12, 0.09),
+    (115.8, 11.0, 0.11, 0.09),
+    (116.0, 8.5, 0.12, 0.09),
+    (116.7, 8.7, 0.12, 0.08),
+    (117.2, 10.0, 0.11, 0.09),
+    (117.5, 8.9, 0.10, 0.08),
+
+    # 南海其他零散礁盘
+    (110.8, 12.0, 0.10, 0.08),
+    (111.5, 11.5, 0.09, 0.07),
+    (112.5, 13.5, 0.09, 0.07),
+    (113.2, 12.2, 0.10, 0.07),
+    (115.0, 12.5, 0.10, 0.07),
+]
+
+
+def is_land(lon, lat):
+    for polygon in POLYGONS:
+        if point_in_polygon(lon, lat, polygon):
+            return 1
+
+    for cx, cy, rx, ry in ELLIPSES:
+        if in_ellipse(lon, lat, cx, cy, rx, ry):
+            return 1
+
+    return 0
+
+
+def generate_matrix():
+    matrix = np.zeros((N_ROWS, N_COLS), dtype=np.uint8)
+
+    for row in range(N_ROWS):
+        lat = LAT_MAX - STEP * row
+        for col in range(N_COLS):
+            lon = LON_MIN + STEP * col
+            matrix[row, col] = is_land(lon, lat)
+
+    return matrix
+
+
+def write_csv(matrix):
+    path = OUT_DIR / "candidate.csv"
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        for row in matrix:
+            writer.writerow([int(v) for v in row])
+
+
+def write_images(matrix):
+    # 水域为黑色 0，陆地为白色 255。
+    raw = (matrix * 255).astype(np.uint8)
+    raw_image = Image.fromarray(raw, mode="L")
+    raw_image.save(OUT_DIR / "candidate.png")
+
+    # 直接重复像素，等价于最近邻放大 8 倍，不做平滑或修补。
+    enlarged = np.repeat(np.repeat(raw, 8, axis=0), 8, axis=1)
+    enlarged_image = Image.fromarray(enlarged, mode="L")
+    enlarged_image.save(OUT_DIR / "candidate_8x.png")
+
+
+def validate(matrix):
+    assert matrix.shape == (111, 141)
+    assert matrix.size == 15651
+    assert np.all((matrix == 0) | (matrix == 1))
+
+    with (OUT_DIR / "candidate.csv").open("r", encoding="utf-8") as f:
+        rows = list(csv.reader(f))
+
+    assert len(rows) == 111
+    assert all(len(row) == 141 for row in rows)
+    assert all(value in {"0", "1"} for row in rows for value in row)
+
+    raw = np.asarray(Image.open(OUT_DIR / "candidate.png").convert("L"))
+    enlarged = np.asarray(
+        Image.open(OUT_DIR / "candidate_8x.png").convert("L")
+    )
+
+    assert raw.shape == (111, 141)
+    assert enlarged.shape == (888, 1128)
+    assert set(np.unique(raw)).issubset({0, 255})
+    assert set(np.unique(enlarged)).issubset({0, 255})
+
+    expected = np.repeat(np.repeat(raw, 8, axis=0), 8, axis=1)
+    assert np.array_equal(expected, enlarged)
+
+
+def main():
+    matrix = generate_matrix()
+    write_csv(matrix)
+    write_images(matrix)
+    validate(matrix)
+
+    land_count = int(matrix.sum())
+    water_count = int(matrix.size - land_count)
+
+    print("生成完成")
+    print(f"矩阵尺寸: {matrix.shape[0]} x {matrix.shape[1]}")
+    print(f"有效值数量: {matrix.size}")
+    print(f"陆地点: {land_count}")
+    print(f"水域点: {water_count}")
+    print("输出文件:")
+    print("  outputs/candidate.csv")
+    print("  outputs/candidate.png")
+    print("  outputs/candidate_8x.png")
+
+
+if __name__ == "__main__":
+    main()
+```

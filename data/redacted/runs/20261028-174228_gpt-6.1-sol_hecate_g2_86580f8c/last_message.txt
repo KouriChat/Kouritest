@@ -1,0 +1,124 @@
+方法：按手写的近似经纬度多边形表示大陆海岸和主要岛屿，再用点在多边形内判定生成采样矩阵。多边形规则统一应用于所有采样点，并非逐点独立推理。脚本仅依赖 Python 标准库、NumPy 和 Pillow，不读取或查询外部地理数据。
+
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+# Coordinates use x = longitude west of 131 degrees:
+# x=0 is 131W, x=2 is 129W. y is latitude.
+# These hand-estimated outlines are intentionally approximate.
+LAND_POLYGONS = [
+    # Mainland coast and interior. The west edge follows the coastal
+    # fjords and inlets in simplified form.
+    [
+        (1.48, 55.00), (2.00, 55.00), (2.00, 53.00),
+        (0.98, 53.00), (1.05, 53.16), (1.20, 53.30),
+        (1.29, 53.47), (1.18, 53.61), (1.15, 53.76),
+        (1.28, 53.88), (1.18, 54.00), (1.04, 54.12),
+        (0.92, 54.23), (1.04, 54.34), (1.24, 54.42),
+        (1.36, 54.55), (1.31, 54.68), (1.43, 54.79),
+        (1.39, 54.89), (1.48, 55.00),
+    ],
+    # Banks Island, near the eastern edge of the map.
+    [
+        (1.67, 53.29), (1.78, 53.27), (1.91, 53.31),
+        (2.00, 53.38), (2.00, 53.79), (1.90, 53.85),
+        (1.78, 53.83), (1.67, 53.74), (1.61, 53.59),
+        (1.63, 53.43), (1.67, 53.29),
+    ],
+    # Small islands in the northern Hecate Strait / coastal channels.
+    [
+        (0.88, 54.57), (0.94, 54.55), (0.99, 54.59),
+        (0.98, 54.64), (0.92, 54.65), (0.88, 54.57),
+    ],
+    [
+        (0.70, 54.37), (0.77, 54.34), (0.82, 54.38),
+        (0.80, 54.43), (0.74, 54.44), (0.70, 54.37),
+    ],
+    [
+        (0.57, 54.26), (0.62, 54.24), (0.66, 54.28),
+        (0.63, 54.32), (0.58, 54.31), (0.57, 54.26),
+    ],
+    # Stephens Island and nearby small islands.
+    [
+        (0.19, 53.59), (0.27, 53.57), (0.32, 53.61),
+        (0.31, 53.67), (0.25, 53.70), (0.20, 53.66),
+        (0.19, 53.59),
+    ],
+    [
+        (0.37, 53.53), (0.42, 53.52), (0.45, 53.56),
+        (0.42, 53.59), (0.38, 53.58), (0.37, 53.53),
+    ],
+]
+
+
+def point_in_polygon(x, y, polygon):
+    """Ray-crossing point test."""
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if (yi > y) != (yj > y):
+            crossing_x = (xj - xi) * (y - yi) / (yj - yi) + xi
+            if x < crossing_x:
+                inside = not inside
+        j = i
+    return inside
+
+
+def main():
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Exact grid endpoints and 127 samples per axis.
+    latitudes = np.linspace(55.0, 53.0, 127)
+    longitudes_west = np.linspace(131.0, 129.0, 127)
+    matrix = np.zeros((127, 127), dtype=np.uint8)
+
+    for row, latitude in enumerate(latitudes):
+        for col, longitude_west in enumerate(longitudes_west):
+            x = 131.0 - longitude_west
+            y = float(latitude)
+            matrix[row, col] = int(
+                any(point_in_polygon(x, y, polygon)
+                    for polygon in LAND_POLYGONS)
+            )
+
+    with (output_dir / "candidate.csv").open(
+        "w", newline="", encoding="ascii"
+    ) as csv_file:
+        writer = csv.writer(csv_file, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # 1 is white land; 0 is black water.
+    image = Image.fromarray(matrix * 255, mode="L")
+    image.save(output_dir / "candidate.png")
+    enlarged = image.resize((1016, 1016), resample=Image.Resampling.NEAREST)
+    enlarged.save(output_dir / "candidate_8x.png")
+
+    # Verify dimensions, values, CSV shape, palette, and nearest-neighbor scale.
+    assert matrix.shape == (127, 127)
+    assert matrix.size == 16129 and set(np.unique(matrix)) <= {0, 1}
+    with (output_dir / "candidate.csv").open(
+        "r", newline="", encoding="ascii"
+    ) as csv_file:
+        rows = list(csv.reader(csv_file))
+    assert len(rows) == 127
+    assert all(len(row) == 127 for row in rows)
+    assert all(value in {"0", "1"} for row in rows for value in row)
+    assert set(image.getdata()) <= {0, 255}
+    assert enlarged.size == (1016, 1016)
+    assert np.array_equal(
+        np.asarray(enlarged),
+        np.repeat(np.repeat(np.asarray(image), 8, axis=0), 8, axis=1),
+    )
+
+
+if __name__ == "__main__":
+    main()
+```
+
+本次未运行脚本，因此这里无法直接附上生成图片或验证运行结果；运行脚本后会在当前目录的 `outputs/` 下生成所需 CSV 和两张 PNG。

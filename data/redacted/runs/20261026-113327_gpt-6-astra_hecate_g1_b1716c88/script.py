@@ -1,0 +1,135 @@
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+
+ROWS = COLS = 127
+LATITUDES = np.linspace(55.0, 53.0, ROWS)
+LONGITUDES = np.linspace(-131.0, -129.0, COLS)
+LON_GRID, LAT_GRID = np.meshgrid(LONGITUDES, LATITUDES)
+
+
+def polygon_mask(vertices):
+    """Classify grid points inside a lon/lat polygon by ray crossing."""
+    inside = np.zeros((ROWS, COLS), dtype=bool)
+    x, y = LON_GRID, LAT_GRID
+    for i, (x1, y1) in enumerate(vertices):
+        x2, y2 = vertices[(i + 1) % len(vertices)]
+        crosses = (y1 > y) != (y2 > y)
+        x_cross = (x2 - x1) * (y - y1) / ((y2 - y1) or 1e-15) + x1
+        inside ^= crosses & (x < x_cross)
+    return inside
+
+
+# Approximate mainland coast; the eastern edge is beyond the requested frame.
+mainland = [
+    (-130.53, 55.00), (-130.42, 54.94), (-130.48, 54.88),
+    (-130.38, 54.82), (-130.34, 54.75), (-130.25, 54.69),
+    (-130.30, 54.61), (-130.20, 54.54), (-130.17, 54.44),
+    (-130.10, 54.34), (-130.13, 54.25), (-130.02, 54.16),
+    (-129.98, 54.07), (-129.91, 53.98), (-129.92, 53.88),
+    (-129.83, 53.79), (-129.87, 53.69), (-129.79, 53.60),
+    (-129.82, 53.50), (-129.73, 53.42), (-129.75, 53.32),
+    (-129.67, 53.23), (-129.70, 53.14), (-129.60, 53.00),
+    (-128.70, 53.00), (-128.70, 55.00),
+]
+land = polygon_mask(mainland)
+inlets = [
+    [(-130.48, 55.00), (-130.36, 55.00), (-130.38, 54.91),
+     (-130.31, 54.84), (-130.24, 54.78), (-130.18, 54.73),
+     (-130.23, 54.69), (-130.34, 54.75), (-130.41, 54.84)],
+    [(-130.30, 54.56), (-130.20, 54.58), (-130.12, 54.52),
+     (-130.04, 54.47), (-130.00, 54.41), (-130.09, 54.40),
+     (-130.17, 54.46), (-130.24, 54.50)],
+    [(-130.15, 54.27), (-130.05, 54.29), (-129.97, 54.23),
+     (-129.90, 54.19), (-129.88, 54.13), (-129.98, 54.13),
+     (-130.06, 54.19)],
+    [(-129.99, 53.99), (-129.89, 54.00), (-129.82, 53.94),
+     (-129.77, 53.88), (-129.81, 53.83), (-129.90, 53.88),
+     (-129.96, 53.93)],
+    [(-129.90, 53.66), (-129.80, 53.68), (-129.73, 53.61),
+     (-129.68, 53.54), (-129.72, 53.49), (-129.80, 53.55),
+     (-129.87, 53.60)],
+]
+for inlet in inlets:
+    land &= ~polygon_mask(inlet)
+
+# Approximate islands, including clipped eastern edges of Haida Gwaii.
+islands = [
+    [(-130.98, 54.92), (-130.84, 54.94), (-130.77, 54.88),
+     (-130.81, 54.81), (-130.93, 54.80), (-131.00, 54.85)],
+    [(-130.76, 54.82), (-130.64, 54.84), (-130.59, 54.77),
+     (-130.66, 54.72), (-130.75, 54.74)],
+    [(-130.96, 54.72), (-130.87, 54.75), (-130.83, 54.69),
+     (-130.90, 54.65), (-130.98, 54.66)],
+    [(-130.66, 54.67), (-130.54, 54.69), (-130.50, 54.62),
+     (-130.57, 54.58), (-130.66, 54.60)],
+    [(-129.31, 54.16), (-129.18, 54.18), (-129.05, 54.12),
+     (-129.00, 54.04), (-129.00, 53.00), (-129.19, 53.00),
+     (-129.22, 53.42), (-129.30, 53.78), (-129.37, 53.98)],
+    [(-129.95, 53.74), (-129.83, 53.78), (-129.75, 53.71),
+     (-129.73, 53.61), (-129.78, 53.53), (-129.87, 53.56),
+     (-129.94, 53.64)],
+    [(-129.98, 53.93), (-129.88, 53.96), (-129.81, 53.90),
+     (-129.84, 53.83), (-129.94, 53.83)],
+]
+islands.extend([
+    [(-130.57, 53.97), (-130.43, 54.01), (-130.32, 53.96),
+     (-130.27, 53.88), (-130.31, 53.79), (-130.40, 53.75),
+     (-130.51, 53.79), (-130.58, 53.87)],
+    [(-130.70, 53.91), (-130.62, 53.94), (-130.58, 53.87),
+     (-130.63, 53.82), (-130.70, 53.85)],
+    [(-130.34, 53.70), (-130.23, 53.73), (-130.18, 53.66),
+     (-130.22, 53.58), (-130.31, 53.59)],
+    [(-130.65, 53.56), (-130.53, 53.60), (-130.46, 53.54),
+     (-130.49, 53.46), (-130.60, 53.45), (-130.67, 53.50)],
+    [(-131.00, 54.98), (-130.92, 54.99), (-130.90, 54.90),
+     (-130.94, 54.84), (-131.00, 54.83)],
+    [(-131.00, 54.57), (-130.95, 54.60), (-130.92, 54.52),
+     (-130.95, 54.44), (-131.00, 54.42)],
+    [(-131.00, 53.58), (-130.94, 53.61), (-130.91, 53.53),
+     (-130.94, 53.45), (-131.00, 53.43)],
+    [(-131.00, 53.31), (-130.93, 53.34), (-130.90, 53.24),
+     (-130.94, 53.15), (-131.00, 53.14)],
+])
+for island in islands:
+    land |= polygon_mask(island)
+
+matrix = land.astype(np.uint8)
+out_dir = Path("outputs")
+out_dir.mkdir(parents=True, exist_ok=True)
+
+with (out_dir / "candidate.csv").open(
+    "w", newline="", encoding="ascii"
+) as f:
+    writer = csv.writer(f, lineterminator="\n")
+    writer.writerows(matrix.tolist())
+image = Image.fromarray(matrix * 255, mode="L")
+image.save(out_dir / "candidate.png")
+image.resize(
+    (COLS * 8, ROWS * 8),
+    resample=Image.Resampling.NEAREST,
+).save(out_dir / "candidate_8x.png")
+
+assert matrix.shape == (127, 127)
+assert matrix.size == 16129
+assert set(np.unique(matrix)).issubset({0, 1})
+
+with (out_dir / "candidate.csv").open(
+    "r", newline="", encoding="ascii"
+) as f:
+    rows = list(csv.reader(f))
+assert len(rows) == 127
+assert all(
+    len(row) == 127 and all(value in {"0", "1"} for value in row)
+    for row in rows
+)
+
+small = Image.open(out_dir / "candidate.png")
+large = Image.open(out_dir / "candidate_8x.png")
+assert small.size == (127, 127)
+assert large.size == (1016, 1016)
+assert set(small.getdata()).issubset({0, 255})
+assert set(large.getdata()).issubset({0, 255})

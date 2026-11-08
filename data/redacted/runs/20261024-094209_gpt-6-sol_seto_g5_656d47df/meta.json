@@ -1,0 +1,31 @@
+{
+  "run_id": "20261024-094209_gpt-6-sol_seto_g5_656d47df",
+  "channel": "OR",
+  "batch_id": "batch-03",
+  "started_at": "2026-10-24T09:42:09+08:00",
+  "finished_at": "2026-10-24T09:44:25+08:00",
+  "duration_sec": 136.3,
+  "status": "failed",
+  "returncode": 403,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": null,
+  "model": "openai/gpt-6-sol",
+  "model_display": "GPT 6 Sol",
+  "task": "seto",
+  "task_label": "濑户内海 2/63°",
+  "group": 5,
+  "prompt_sha256": "551d6fb3df8fe61af981ea454ba6fed3f898405e2c81a6cf0981578386d8f3c1",
+  "error": "HTTPError 403: Forbidden",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261024-094209_gpt-6-sol_seto_g5_656d47df/script.py",
+    "response_error.txt": "runs/20261024-094209_gpt-6-sol_seto_g5_656d47df/response_error.txt"
+  }
+}

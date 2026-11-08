@@ -1,0 +1,163 @@
+我会按你指定的无外部地理数据方式，用手写海岸边界和岛屿范围规则生成采样矩阵；同时遵守本轮较新的直接答复要求，在最终消息中给出完整脚本，不尝试工具或写入文件。
+下面脚本仅用手写的近似海岸线折线、岛屿轮廓及多边形点包含规则分类；不是对 16,129 个点逐点独立推理，也不调用外部地图或地理数据。海岸线与岛屿位置为基于已有地理知识的近似，细小岛礁可能遗漏。运行依赖为 Python、NumPy 和 Pillow；脚本会在当前目录创建 `outputs/` 并写出三项结果。
+
+```python
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+# Grid: 55N to 53N, 131W to 129W; north-to-south, west-to-east.
+SIZE = 127
+LAT_NORTH = 55.0
+LAT_SOUTH = 53.0
+LON_WEST = -131.0
+LON_EAST = -129.0
+
+# Hand-sketched land boundaries and island outlines. Coordinates are (lon, lat).
+# These approximate the northern British Columbia coast and Haida Gwaii.
+MAINLAND = [
+    (-130.45, 55.00), (-130.17, 54.93), (-130.03, 54.82),
+    (-129.94, 54.70), (-129.84, 54.60), (-129.70, 54.50),
+    (-129.58, 54.38), (-129.51, 54.22), (-129.48, 54.06),
+    (-129.45, 53.91), (-129.40, 53.76), (-129.33, 53.61),
+    (-129.25, 53.43), (-129.18, 53.24), (-129.13, 53.00),
+    (-129.00, 53.00), (-129.00, 55.00),
+]
+NORTH_COAST_ISLAND = [
+    (-131.00, 54.96), (-130.83, 54.94), (-130.68, 54.91),
+    (-130.53, 54.88), (-130.39, 54.86), (-130.25, 54.83),
+    (-130.13, 54.78), (-130.07, 54.71), (-130.13, 54.65),
+    (-130.22, 54.66), (-130.34, 54.70), (-130.47, 54.73),
+    (-130.60, 54.76), (-130.75, 54.79), (-130.91, 54.81),
+    (-131.00, 54.82),
+]
+PRINCE_OF_WALES = [
+    (-131.00, 54.68), (-130.89, 54.66), (-130.80, 54.61),
+    (-130.75, 54.54), (-130.75, 54.45), (-130.79, 54.37),
+    (-130.87, 54.32), (-130.98, 54.33), (-131.00, 54.34),
+]
+DALL_ISLAND = [
+    (-131.00, 54.14), (-130.91, 54.14), (-130.84, 54.10),
+    (-130.82, 54.03), (-130.85, 53.96), (-130.93, 53.93),
+    (-131.00, 53.94),
+]
+GRAHAM_ISLAND = [
+    (-131.00, 54.00), (-130.84, 53.99), (-130.67, 53.98),
+    (-130.49, 53.97), (-130.31, 53.96), (-130.14, 53.94),
+    (-130.00, 53.91), (-129.87, 53.88), (-129.77, 53.84),
+    (-129.70, 53.79), (-129.68, 53.72), (-129.70, 53.65),
+    (-129.75, 53.58), (-129.83, 53.50), (-129.91, 53.43),
+    (-130.01, 53.37), (-130.13, 53.33), (-130.28, 53.32),
+    (-130.43, 53.34), (-130.57, 53.39), (-130.70, 53.46),
+    (-130.81, 53.54), (-130.91, 53.63), (-131.00, 53.70),
+]
+MOR言ESBY_ISLAND = [
+    (-131.00, 53.63), (-130.90, 53.62), (-130.80, 53.58),
+    (-130.73, 53.52), (-130.70, 53.44), (-130.70, 53.36),
+    (-130.74, 53.28), (-130.80, 53.20), (-130.88, 53.13),
+    (-130.97, 53.08), (-131.00, 53.07),
+]
+# Correctly spelled alias kept separate for readability.
+MORSESBY_ISLAND = [
+    (-131.00, 53.63), (-130.90, 53.62), (-130.80, 53.58),
+    (-130.73, 53.52), (-130.70, 53.44), (-130.70, 53.36),
+    (-130.74, 53.28), (-130.80, 53.20), (-130.88, 53.13),
+    (-130.97, 53.08), (-131.00, 53.07),
+]
+SMALL_ISLANDS = [
+    [(-130.42, 54.61), (-130.36, 54.62), (-130.32, 54.58),
+     (-130.34, 54.53), (-130.40, 54.53), (-130.44, 54.57)],
+    [(-130.57, 54.48), (-130.51, 54.49), (-130.47, 54.45),
+     (-130.49, 54.40), (-130.55, 54.40), (-130.59, 54.44)],
+    [(-130.24, 54.30), (-130.18, 54.31), (-130.14, 54.27),
+     (-130.16, 54.22), (-130.22, 54.22), (-130.26, 54.26)],
+    [(-130.40, 53.28), (-130.35, 53.30), (-130.31, 53.27),
+     (-130.32, 53.23), (-130.38, 53.23), (-130.42, 53.26)],
+]
+
+LAND_POLYGONS = [
+    MAINLAND, NORTH_COAST_ISLAND, PRINCE_OF_WALES, DALL_ISLAND,
+    GRAHAM_ISLAND, MORSESBY_ISLAND, *SMALL_ISLANDS,
+]
+
+
+def point_in_polygon(lon, lat, polygon):
+    """Ray-casting point test; boundary points are treated as land."""
+    inside = False
+    count = len(polygon)
+    for i in range(count):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % count]
+
+        # Explicitly include points on an edge.
+        cross = (lon - x1) * (y2 - y1) - (lat - y1) * (x2 - x1)
+        if abs(cross) < 1e-12:
+            if min(x1, x2) - 1e-12 <= lon <= max(x1, x2) + 1e-12:
+                if min(y1, y2) - 1e-12 <= lat <= max(y1, y2) + 1e-12:
+                    return True
+
+        if (y1 > lat) != (y2 > lat):
+            crossing_lon = x1 + (lat - y1) * (x2 - x1) / (y2 - y1)
+            if lon < crossing_lon:
+                inside = not inside
+    return inside
+
+
+def build_matrix():
+    latitudes = np.linspace(LAT_NORTH, LAT_SOUTH, SIZE)
+    longitudes = np.linspace(LON_WEST, LON_EAST, SIZE)
+    matrix = np.zeros((SIZE, SIZE), dtype=np.uint8)
+
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            matrix[row, col] = int(
+                any(point_in_polygon(lon, lat, polygon)
+                    for polygon in LAND_POLYGONS)
+            )
+    return matrix
+
+
+def main():
+    out_dir = Path("outputs")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    matrix = build_matrix()
+    if matrix.shape != (127, 127) or matrix.size != 16129:
+        raise RuntimeError("Unexpected matrix dimensions.")
+    if not np.isin(matrix, [0, 1]).all():
+        raise RuntimeError("Matrix contains values other than 0 and 1.")
+
+    np.savetxt(out_dir / "candidate.csv", matrix, fmt="%d", delimiter=",")
+
+    # Matrix value 1 (land) is white; 0 (water) is black.
+    image = Image.fromarray(matrix * 255, mode="L")
+    image.save(out_dir / "candidate.png")
+
+    enlarged = image.resize((1016, 1016), resample=Image.Resampling.NEAREST)
+    enlarged.save(out_dir / "candidate_8x.png")
+
+    # Verify CSV shape/content and image dimensions/palette.
+    rows = (out_dir / "candidate.csv").read_text(encoding="ascii").splitlines()
+    if len(rows) != 127 or any(
+        len(line.split(",")) != 127
+        or any(value not in ("0", "1") for value in line.split(","))
+        for line in rows
+    ):
+        raise RuntimeError("CSV validation failed.")
+
+    raw = np.asarray(Image.open(out_dir / "candidate.png"))
+    scaled = np.asarray(Image.open(out_dir / "candidate_8x.png"))
+    if raw.shape != (127, 127) or not set(np.unique(raw)).issubset({0, 255}):
+        raise RuntimeError("Original PNG validation failed.")
+    if scaled.shape != (1016, 1016):
+        raise RuntimeError("Enlarged PNG dimensions are incorrect.")
+    if not np.array_equal(scaled, np.repeat(np.repeat(raw, 8, axis=0), 8, axis=1)):
+        raise RuntimeError("Enlarged PNG is not an exact nearest-neighbor scale.")
+
+    print("Wrote validated 127x127 matrix and PNGs to outputs/.")
+
+
+if __name__ == "__main__":
+    main()
+```

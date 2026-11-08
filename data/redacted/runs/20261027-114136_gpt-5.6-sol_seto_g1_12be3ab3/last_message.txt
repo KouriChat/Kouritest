@@ -1,0 +1,1 @@
+Created `outputs/_part01.py` with 48 lines: imports, grid setup, polygon/ellipse geometry tests, and shape registration helpers.

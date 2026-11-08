@@ -1,0 +1,84 @@
+{
+  "run_id": "20261029-193546_gpt-6.1-terra_hecate_g3_04f47552",
+  "channel": "D",
+  "batch_id": "batch-11",
+  "started_at": "2026-10-29T19:35:46+08:00",
+  "finished_at": "2026-10-29T19:36:24+08:00",
+  "duration_sec": 37.2,
+  "status": "partial",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": 0,
+  "model": "gpt-6.1-terra",
+  "model_display": "GPT 6.1 Terra",
+  "task": "hecate",
+  "task_label": "赫卡特海峡 2/126°",
+  "group": 3,
+  "prompt_sha256": "50313a41be43a3e640dd6e88e129b3b69da3437e0866b9b2019d4c880add1322",
+  "error": "",
+  "score": {
+    "errors": 7320,
+    "correct": 8809,
+    "score": 8809,
+    "max_score": 16129,
+    "cells": 16129,
+    "accuracy_pct": 54.61590923181846,
+    "normalized": 8847.777295554592,
+    "extra_land": 4172,
+    "missing_land": 3148,
+    "orientation_ok": false,
+    "flip_vertical_accuracy": 55.855911711823424,
+    "flip_horizontal_accuracy": 50.78430156860314
+  },
+  "map_metrics": {
+    "accuracy_pct": 54.615909,
+    "hss": 0.037252,
+    "boundary_f1_d0": 0.135788,
+    "boundary_f1_d1": 0.244441,
+    "boundary_f1_d2": 0.340308,
+    "narrow_water_keep": 0.547619,
+    "narrow_water_cells": 126,
+    "island_iou_median": 0.006964,
+    "island_iou_area_weighted": 0.410968,
+    "island_iou_ge50": 0.043478,
+    "component_recall": 0.043478,
+    "n_ref_components": 23,
+    "n_pred_components": 3,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "partial",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": false
+    }
+  },
+  "files": {
+    "candidate.png": "runs/20261029-193546_gpt-6.1-terra_hecate_g3_04f47552/candidate.png",
+    "candidate_8x.png": "runs/20261029-193546_gpt-6.1-terra_hecate_g3_04f47552/candidate_8x.png",
+    "candidate.csv": "runs/20261029-193546_gpt-6.1-terra_hecate_g3_04f47552/candidate.csv",
+    "diff.png": "runs/20261029-193546_gpt-6.1-terra_hecate_g3_04f47552/diff.png",
+    "script.py": "runs/20261029-193546_gpt-6.1-terra_hecate_g3_04f47552/script.py",
+    "last_message.txt": "runs/20261029-193546_gpt-6.1-terra_hecate_g3_04f47552/last_message.txt"
+  }
+}

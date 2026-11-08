@@ -1,0 +1,1 @@
+All five parts are ready. I’ll assemble them into one runnable script, run it, and verify the generated files.

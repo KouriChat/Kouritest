@@ -1,0 +1,17 @@
+provider,metric,metric_label,tasks_with_high_and_low_valid,n_tasks_comparable,n_tasks_negative,tasks_negative,cross_task_consistent_negative,assessment
+C,accuracy,准确率,"seto,hecate",2,2,"seto,hecate",True,consistent_negative
+C,hss,HSS,"seto,hecate",2,2,"seto,hecate",True,consistent_negative
+C,boundary_f1,边界F1@1,"seto,hecate",2,2,"seto,hecate",True,consistent_negative
+C,narrow_water_keep,近陆窄水保留率,"seto,hecate",2,1,seto,False,not_consistent
+C,island_iou_median,岛屿IoU中位数,"seto,hecate",2,1,hecate,False,not_consistent
+C,island_iou_area_weighted,岛屿IoU面积加权,"seto,hecate",2,2,"seto,hecate",True,consistent_negative
+C,island_iou_ge50,岛屿IoU≥0.5比例,"seto,hecate",2,1,seto,False,not_consistent
+C,component_recall,分量召回率,"seto,hecate",2,0,,False,not_consistent
+F,accuracy,准确率,"seto,hecate",2,1,hecate,False,not_consistent
+F,hss,HSS,"seto,hecate",2,1,hecate,False,not_consistent
+F,boundary_f1,边界F1@1,"seto,hecate",2,1,hecate,False,not_consistent
+F,narrow_water_keep,近陆窄水保留率,"seto,hecate",2,1,seto,False,not_consistent
+F,island_iou_median,岛屿IoU中位数,"seto,hecate",2,1,seto,False,not_consistent
+F,island_iou_area_weighted,岛屿IoU面积加权,"seto,hecate",2,2,"seto,hecate",True,consistent_negative
+F,island_iou_ge50,岛屿IoU≥0.5比例,"seto,hecate",2,1,seto,False,not_consistent
+F,component_recall,分量召回率,"seto,hecate",2,2,"seto,hecate",True,consistent_negative

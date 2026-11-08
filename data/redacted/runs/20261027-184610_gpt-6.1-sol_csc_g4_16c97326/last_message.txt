@@ -1,0 +1,115 @@
+```python
+from pathlib import Path
+import csv
+import numpy as np
+from PIL import Image
+
+# Hand-estimated coastline and island polygons. These are approximate rules,
+# not independently reasoned classifications for each sample point.
+# Coordinates are (longitude, latitude), in WGS84 decimal degrees.
+
+MAINLAND = [
+    (99, 23), (117.5, 23), (117.1, 22.7), (116.2, 22.5),
+    (115.3, 22.2), (114.5, 22.5), (113.5, 22.1), (112.1, 21.5),
+    (110.5, 20.5), (109.7, 19.8), (108.5, 20.0), (107.5, 20.0),
+    (106.7, 20.8), (106.0, 21.4), (105.0, 21.5), (104.0, 22.0),
+    (102.0, 22.0), (100.0, 21.0), (99.0, 20.0),
+    (99.0, 8.0), (99.7, 6.5), (100.2, 5.0), (100.5, 3.5),
+    (101.3, 2.0), (102.3, 1.2), (103.5, 1.1), (104.2, 1.5),
+    (104.3, 3.0), (103.7, 4.7), (103.0, 6.0), (102.2, 7.2),
+    (102.0, 8.5), (101.5, 10.0), (100.5, 12.0), (100.0, 14.0),
+    (100.0, 16.0), (99.5, 18.0), (99.0, 20.0),
+]
+
+ISLANDS = [
+    # Hainan
+    [(108.6, 19.0), (109.5, 18.9), (110.0, 19.3), (110.2, 19.8),
+     (109.8, 20.1), (109.1, 20.1), (108.7, 19.7)],
+    # Taiwan
+    [(120.0, 21.9), (120.8, 22.0), (121.2, 22.6), (121.5, 23.4),
+     (121.4, 24.4), (121.0, 25.2), (120.5, 25.3), (120.1, 24.5),
+     (120.0, 23.4)],
+    # Borneo
+    [(109.5, 7.0), (110.5, 7.2), (112.0, 7.0), (113.5, 4.5),
+     (117.5, 4.2), (119.0, 5.0), (118.0, 6.5), (117.5, 7.0),
+     (116.0, 7.0), (115.0, 5.0), (114.0, 4.0), (113.0, 3.0),
+     (111.0, 1.0), (109.7, 1.0), (109.5, 3.0)],
+    # Sumatra
+    [(99.0, 3.5), (99.5, 5.5), (100.0, 6.5), (101.0, 5.5),
+     (102.0, 4.0), (103.0, 2.5), (104.0, 1.0), (104.5, 0.0),
+     (103.0, -1.0), (101.5, -1.0), (100.0, 0.5), (99.0, 1.5)],
+    # Java, only its northern edge enters the frame
+    [(105.0, -1.0), (114.0, -1.0), (114.0, -2.0), (105.0, -2.0)],
+    # Palawan
+    [(117.0, 8.0), (117.5, 9.0), (118.0, 10.0), (118.5, 11.0),
+     (119.0, 12.0), (118.7, 12.5), (118.2, 11.8), (117.5, 10.5),
+     (117.0, 9.0)],
+    # Luzon
+    [(119.5, 16.0), (120.0, 17.0), (120.8, 18.5), (121.5, 19.5),
+     (122.0, 18.5), (122.0, 17.0), (121.5, 16.0), (121.0, 15.0),
+     (120.0, 15.5)],
+    # Mindoro, Panay, Negros, Cebu, Samar, Leyte, Mindanao
+    [(120.3, 13.0), (121.2, 13.0), (121.5, 13.8), (120.8, 14.0)],
+    [(121.5, 11.0), (122.5, 11.0), (122.8, 11.8), (121.8, 12.2)],
+    [(122.0, 9.5), (123.0, 9.5), (123.3, 10.5), (122.4, 10.8)],
+    [(123.5, 9.5), (124.0, 9.5), (124.2, 11.5), (123.7, 11.5)],
+    [(124.0, 11.5), (125.0, 11.5), (125.5, 12.5), (124.5, 12.8)],
+    [(124.5, 9.5), (126.0, 8.0), (126.5, 7.0), (125.5, 6.0),
+     (124.0, 6.0), (123.5, 7.0), (124.0, 8.5)],
+    # Smaller island groups
+    [(119.3, 5.5), (119.8, 5.5), (120.0, 6.3), (119.4, 6.5)],
+    [(121.8, 7.0), (122.5, 7.0), (122.6, 7.8), (121.9, 7.8)],
+    [(125.0, 6.0), (126.0, 6.0), (126.0, 7.0), (125.0, 7.0)],
+    # Natuna and Anambas islands
+    [(107.5, 3.5), (108.5, 3.5), (108.7, 4.2), (107.8, 4.4)],
+    [(105.5, 2.5), (106.5, 2.5), (106.5, 3.2), (105.7, 3.2)],
+    # Paracel and Spratly reef/island approximations
+    [(111.3, 16.3), (112.0, 16.3), (112.2, 16.9), (111.5, 17.0)],
+    [(114.0, 10.0), (114.8, 10.0), (115.0, 10.6), (114.2, 10.7)],
+    [(111.5, 8.5), (112.0, 8.5), (112.2, 9.0), (111.7, 9.1)],
+]
+
+
+def on_land(lon, lat):
+    """Return whether a point lies inside any hand-drawn polygon."""
+    for polygon in [MAINLAND, *ISLANDS]:
+        inside = False
+        j = len(polygon) - 1
+        for i, (xi, yi) in enumerate(polygon):
+            xj, yj = polygon[j]
+            if (yi > lat) != (yj > lat):
+                crossing_x = (xj - xi) * (lat - yi) / (yj - yi) + xi
+                if lon < crossing_x:
+                    inside = not inside
+            j = i
+        if inside:
+            return True
+    return False
+
+
+def main():
+    out = Path("outputs")
+    out.mkdir(parents=True, exist_ok=True)
+
+    lats = 23.0 - 0.2 * np.arange(111)
+    lons = 99.0 + 0.2 * np.arange(141)
+    matrix = np.array(
+        [[int(on_land(float(lon), float(lat))) for lon in lons] for lat in lats],
+        dtype=np.uint8,
+    )
+
+    with (out / "candidate.csv").open("w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # 0 is black water; 1 is white land.
+    image = Image.fromarray(matrix * 255, mode="L").convert("RGB")
+    image.save(out / "candidate.png")
+    image.resize((1128, 888), resample=Image.Resampling.NEAREST).save(
+        out / "candidate_8x.png"
+    )
+
+
+if __name__ == "__main__":
+    main()
+```

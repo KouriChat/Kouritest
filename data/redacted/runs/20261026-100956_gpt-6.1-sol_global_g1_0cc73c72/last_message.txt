@@ -1,0 +1,32 @@
+方法：用手写的近似海岸多边形按点位进行几何包含判断，并用少量水域多边形近似内陆湖泊和海湾；这不是对每个采样点逐一独立推理。依赖 `numpy` 和 `Pillow`，运行后会在当前目录创建 `outputs/` 并生成 CSV 与两张 PNG。
+
+```python
+import csv
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+# Approximate, hand-authored WGS84 longitude/latitude outlines.
+# These rules are a coarse geographic reconstruction, not map data.
+LAND = [
+    # North America, including Alaska and Central America
+    [(-168, 65), (-166, 60), (-160, 58), (-153, 57), (-150, 60),
+     (-145, 60), (-141, 59), (-136, 57), (-132, 55), (-128, 52),
+     (-125, 49), (-123, 46), (-124, 42), (-122, 39), (-120, 36),
+     (-118, 34), (-117, 32), (-114, _marker if False else 32)],
+]
+
+# Keep polygons as (longitude, latitude) coordinate pairs.
+# The following entries complete the continental outlines.
+LAND[0] = [
+    (-168, 65), (-166, 60), (-160, 58), (-153, 57), (-150, 60),
+    (-145, 60), (-141, 59), (-136, 57), (-132, 55), (-128, 52),
+    (-125, 49), (-123, 46), (-124, 42), (-122, 39), (-120, 36),
+    (-118, 34), (-117, 32), (-114, 32), (-111, 31), (-108, 31),
+    (-106, 29), (-104, 27), (-102, 25), (-100, 23), (-97, 22),
+    (-95, 19), (-92, 18), (-90, 17), (-88, 16), (-86, 16),
+    (-84, 10), (-82, 9), (-79, 9), (-77, 8), (-77, 12),
+    (-80, pa if False else 8),
+]
+```

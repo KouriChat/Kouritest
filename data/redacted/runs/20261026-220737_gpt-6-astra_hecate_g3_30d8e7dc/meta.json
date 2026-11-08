@@ -1,0 +1,77 @@
+{
+  "run_id": "20261026-220737_gpt-6-astra_hecate_g3_30d8e7dc",
+  "channel": "A",
+  "batch_id": "batch-06",
+  "started_at": "2026-10-26T22:07:37+08:00",
+  "finished_at": "2026-10-26T22:12:09+08:00",
+  "duration_sec": 271.7,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": 0,
+  "model": "gpt-6-astra-codex",
+  "model_display": "GPT 6 Astra",
+  "task": "hecate",
+  "task_label": "赫卡特海峡 2/126°",
+  "group": 3,
+  "prompt_sha256": "50313a41be43a3e640dd6e88e129b3b69da3437e0866b9b2019d4c880add1322",
+  "error": "",
+  "score": {
+    "errors": 3996,
+    "correct": 12133,
+    "score": 12133,
+    "max_score": 16129,
+    "cells": 16129,
+    "accuracy_pct": 75.2247504495009,
+    "normalized": 12186.409572819146,
+    "extra_land": 1273,
+    "missing_land": 2723,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 58.62111724223449,
+    "flip_horizontal_accuracy": 41.18668237336475
+  },
+  "map_metrics": {
+    "accuracy_pct": 75.22475,
+    "hss": 0.504116,
+    "boundary_f1_d0": 0.239894,
+    "boundary_f1_d1": 0.418395,
+    "boundary_f1_d2": 0.542014,
+    "narrow_water_keep": 0.333333,
+    "narrow_water_cells": 126,
+    "island_iou_median": 0.0114,
+    "island_iou_area_weighted": 0.482712,
+    "island_iou_ge50": 0.043478,
+    "component_recall": 0.043478,
+    "n_ref_components": 23,
+    "n_pred_components": 21,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {}
+}

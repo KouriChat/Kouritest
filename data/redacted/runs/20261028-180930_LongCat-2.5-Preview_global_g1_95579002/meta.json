@@ -1,0 +1,83 @@
+{
+  "run_id": "20261028-180930_LongCat-2.5-Preview_global_g1_95579002",
+  "channel": "G",
+  "batch_id": "batch-14",
+  "started_at": "2026-10-28T18:09:30+08:00",
+  "finished_at": "2026-10-28T18:11:31+08:00",
+  "duration_sec": 120.8,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 5,
+  "request_retries": 1,
+  "model": "LongCat-2.5-Preview",
+  "model_display": "LongCat 2.5 Preview",
+  "task": "global",
+  "task_label": "全球 2°",
+  "group": 1,
+  "prompt_sha256": "3b29f0597bf52e8706872573ef54a081c777de4a7d6ad8268514209bffa9dd12",
+  "error": "",
+  "score": {
+    "errors": 991,
+    "correct": 15209,
+    "score": 15209,
+    "max_score": 16200,
+    "cells": 16200,
+    "accuracy_pct": 93.88271604938272,
+    "normalized": 15209.0,
+    "extra_land": 694,
+    "missing_land": 297,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 47.129629629629626,
+    "flip_horizontal_accuracy": 70.0925925925926
+  },
+  "map_metrics": {
+    "accuracy_pct": 93.882716,
+    "hss": 0.864742,
+    "boundary_f1_d0": 0.658751,
+    "boundary_f1_d1": 0.873175,
+    "boundary_f1_d2": 0.942739,
+    "narrow_water_keep": 0.464789,
+    "narrow_water_cells": 71,
+    "island_iou_median": 0.14578,
+    "island_iou_area_weighted": 0.743503,
+    "island_iou_ge50": 0.323529,
+    "component_recall": 0.441176,
+    "n_ref_components": 34,
+    "n_pred_components": 28,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {
+    "candidate.png": "runs/20261028-180930_LongCat-2.5-Preview_global_g1_95579002/candidate.png",
+    "candidate_8x.png": "runs/20261028-180930_LongCat-2.5-Preview_global_g1_95579002/candidate_8x.png",
+    "candidate.csv": "runs/20261028-180930_LongCat-2.5-Preview_global_g1_95579002/candidate.csv",
+    "diff.png": "runs/20261028-180930_LongCat-2.5-Preview_global_g1_95579002/diff.png",
+    "script.py": "runs/20261028-180930_LongCat-2.5-Preview_global_g1_95579002/script.py"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "run_id": "20261028-192144_LongCat-2.5-Preview_dzh_g5_a99e90df",
+  "channel": "G",
+  "batch_id": "batch-14",
+  "started_at": "2026-10-28T19:21:44+08:00",
+  "finished_at": "2026-10-28T19:45:33+08:00",
+  "duration_sec": 1429.0,
+  "status": "partial",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 23,
+  "request_retries": 6,
+  "model": "LongCat-2.5-Preview",
+  "model_display": "LongCat 2.5 Preview",
+  "task": "dzh",
+  "task_label": "地中海 0.2°",
+  "group": 5,
+  "prompt_sha256": "ed60d2d0403da116ee920e35b57d8eca0509572e4331d15e0459b831ea2f9894",
+  "error": "",
+  "score": {
+    "errors": 6639,
+    "correct": 9762,
+    "score": 9762,
+    "max_score": 16401,
+    "cells": 16401,
+    "accuracy_pct": 59.52076092921163,
+    "normalized": 9642.363270532285,
+    "extra_land": 5221,
+    "missing_land": 1418,
+    "orientation_ok": false,
+    "flip_vertical_accuracy": 59.801231632217544,
+    "flip_horizontal_accuracy": 57.25260654838119
+  },
+  "map_metrics": {
+    "accuracy_pct": 59.520761,
+    "hss": 0.164365,
+    "boundary_f1_d0": 0.235238,
+    "boundary_f1_d1": 0.415927,
+    "boundary_f1_d2": 0.534066,
+    "narrow_water_keep": 0.635135,
+    "narrow_water_cells": 74,
+    "island_iou_median": 0.000247,
+    "island_iou_area_weighted": 0.168896,
+    "island_iou_ge50": 0.0,
+    "component_recall": 0.04,
+    "n_ref_components": 25,
+    "n_pred_components": 15,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "partial",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": false
+    }
+  },
+  "files": {
+    "candidate.png": "runs/20261028-192144_LongCat-2.5-Preview_dzh_g5_a99e90df/candidate.png",
+    "candidate_8x.png": "runs/20261028-192144_LongCat-2.5-Preview_dzh_g5_a99e90df/candidate_8x.png",
+    "candidate.csv": "runs/20261028-192144_LongCat-2.5-Preview_dzh_g5_a99e90df/candidate.csv",
+    "diff.png": "runs/20261028-192144_LongCat-2.5-Preview_dzh_g5_a99e90df/diff.png",
+    "script.py": "runs/20261028-192144_LongCat-2.5-Preview_dzh_g5_a99e90df/script.py",
+    "last_message.txt": "runs/20261028-192144_LongCat-2.5-Preview_dzh_g5_a99e90df/last_message.txt"
+  }
+}

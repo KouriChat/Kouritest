@@ -19,6 +19,16 @@
 | `paper_framework/supplement_20261105/` | 补充材料的核验脚本与核验结果 |
 | `data/supplement_20261105/runs/` | 补充材料中逐次运行的代表性产物（见下） |
 
+
+## 完整脱敏实验数据
+
+`data/redacted/` 收录了本项目全部 1,073 次实验尝试的脱敏归档，包括每次运行的最终图像、CSV、生成脚本、评分元数据，以及汇总表、补充实验协议与分析报告。渠道名统一替换为 `OR`、`A`–`G`、`S1`/`S2`；base URL、API key、渠道/凭据 id、客户端 IP 与本地绝对路径均已移除。
+
+- `data/redacted/README.md`：字段、目录与复现说明
+- `data/redacted/tables/runs.csv`：1,073 行的运行级总表
+- `data/redacted/manifest.json`：机器可读索引
+- `data/redacted/checksums.sha256`：全部文件的 SHA-256
+
 ## 环境安装
 
 ```powershell

@@ -1,0 +1,157 @@
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+ROWS = 127
+COLS = 127
+STEP = 2.0 / 126.0
+
+# Hand-drawn approximation of the mainland's western shore, north to south.
+# Coordinates are (latitude, longitude); mainland lies east of this line.
+shoreline = [
+    (55.00, -129.66),
+    (54.96, -129.73),
+    (54.92, -129.76),
+    (54.88, -129.55),
+    (54.84, -129.48),
+    (54.80, -129.61),
+    (54.76, -129.76),
+    (54.72, -129.82),
+    (54.68, -129.75),
+    (54.64, -129.63),
+    (54.60, -129.50),
+    (54.56, -129.47),
+    (54.52, -129.56),
+    (54.48, -129.70),
+    (54.44, -129.78),
+    (54.40, -129.73),
+    (54.36, -129.61),
+    (54.32, -129.52),
+    (54.28, -129.56),
+    (54.24, -129.68),
+    (54.20, -129.78),
+    (54.16, -129.73),
+    (54.12, -129.60),
+    (54.08, -129.48),
+    (54.04, -129.45),
+    (54.00, -129.52),
+    (53.96, -129.66),
+    (53.92, -129.76),
+    (53.88, -129.72),
+    (53.84, -129.61),
+    (53.80, -129.50),
+    (53.76, -129.47),
+    (53.72, -129.56),
+    (53.68, -129.69),
+    (53.64, -129.76),
+    (53.60, -129.69),
+    (53.56, -129.57),
+    (53.52, -129.47),
+    (53.48, -129.45),
+    (53.44, -129.54),
+    (53.40, -129.65),
+    (53.36, -129.73),
+    (53.32, -129.68),
+    (53.28, -129.56),
+    (53.24, -129.48),
+    (53.20, -129.46),
+    (53.16, -129.55),
+    (53.12, -129.68),
+    (53.08, -129.73),
+    (53.04, -129.66),
+    (53.00, -129.58),
+]
+
+mainland = shoreline + [(53.0, -129.0), (55.0, -129.0)]
+islands = [
+    # Dundas Island group
+    [(54.74, -130.91), (54.81, -130.82), (54.80, -130.70),
+     (54.74, -130.65), (54.68, -130.75), (54.68, -130.87)],
+    [(54.62, -130.78), (54.66, -130.72), (54.64, -130.65),
+     (54.59, -130.69), (54.58, -130.76)],
+    # Banks Island
+    [(54.52, -130.35), (54.48, -130.17), (54.38, -130.03),
+     (54.24, -129.99), (54.08, -130.04), (53.93, -130.15),
+     (53.83, -130.30), (53.82, -130.48), (53.91, -130.62),
+     (54.08, -130.68), (54.26, -130.62), (54.43, -130.52)],
+    # Pitt Island
+    [(53.82, -130.22), (53.73, -130.12), (53.60, -130.10),
+     (53.47, -130.16), (53.36, -130.25), (53.24, -130.26),
+     (53.12, -130.34), (53.00, -130.41), (53.00, -130.63),
+     (53.12, -130.58), (53.25, -130.52), (53.40, -130.46),
+     (53.56, -130.39), (53.70, -130.31)],
+    # Smaller coastal islands
+    [(54.26, -130.88), (54.32, -130.82), (54.30, -130.73),
+     (54.24, -130.74), (54.21, -130.82)],
+    [(53.91, -129.94), (53.97, -129.88), (53.95, -129.80),
+     (53.89, -129.82), (53.87, -129.90)],
+    [(53.72, -130.82), (53.78, -130.75), (53.76, -130.67),
+     (53.69, -130.69), (53.67, -130.77)],
+]
+
+
+def point_in_polygon(lat, lon, polygon):
+    """Ray-cast test; polygon vertices are (latitude, longitude)."""
+    inside = False
+    count = len(polygon)
+    for i in range(count):
+        lat1, lon1 = polygon[i]
+        lat2, lon2 = polygon[(i + 1) % count]
+        cross = (lon - lon1) * (lat2 - lat1) - (lat - lat1) * (lon2 - lon1)
+        if abs(cross) < 1e-12:
+            if (min(lat1, lat2) - 1e-12 <= lat <= max(lat1, lat2) + 1e-12
+                    and min(lon1, lon2) - 1e-12 <= lon <= max(lon1, lon2) + 1e-12):
+                return True
+        if (lat1 > lat) != (lat2 > lat):
+            crossing_lon = lon1 + (lat - lat1) * (lon2 - lon1) / (lat2 - lat1)
+            if lon < crossing_lon:
+                inside = not inside
+    return inside
+def is_land(lat, lon):
+    if point_in_polygon(lat, lon, mainland):
+        return 1
+    return int(any(point_in_polygon(lat, lon, poly) for poly in islands))
+
+
+def main():
+    matrix = np.zeros((ROWS, COLS), dtype=np.uint8)
+    for row in range(ROWS):
+        lat = 55.0 - row * STEP
+        for col in range(COLS):
+            lon = -131.0 + col * STEP
+            matrix[row, col] = is_land(lat, lon)
+
+    out_dir = Path.cwd() / "outputs"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with (out_dir / "candidate.csv").open(
+            "w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    image = Image.fromarray(matrix * 255, mode="L")
+    image.save(out_dir / "candidate.png")
+    image.resize((1016, 1016), Image.Resampling.NEAREST).save(
+        out_dir / "candidate_8x.png"
+    )
+
+    assert matrix.shape == (127, 127) and matrix.size == 16129
+    assert set(np.unique(matrix).tolist()) <= {0, 1}
+    with (out_dir / "candidate.csv").open(newline="", encoding="ascii") as f:
+        data = list(csv.reader(f))
+    assert len(data) == 127
+    assert all(len(row) == 127 and all(v in {"0", "1"} for v in row)
+               for row in data)
+    original = Image.open(out_dir / "candidate.png").convert("L")
+    enlarged = Image.open(out_dir / "candidate_8x.png").convert("L")
+    assert original.size == (127, 127)
+    assert set(original.getdata()) <= {0, 255}
+    assert enlarged.size == (1016, 1016)
+    assert enlarged.tobytes() == original.resize(
+        (1016, 1016), Image.Resampling.NEAREST
+    ).tobytes()
+
+
+if __name__ == "__main__":
+    main()

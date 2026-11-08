@@ -1,0 +1,77 @@
+{
+  "run_id": "20261026-214825_gpt-6-astra_dzh_g1_ed5a45f2",
+  "channel": "A",
+  "batch_id": "batch-06",
+  "started_at": "2026-10-26T21:48:25+08:00",
+  "finished_at": "2026-10-26T22:04:09+08:00",
+  "duration_sec": 943.9,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": 0,
+  "model": "gpt-6-astra-codex",
+  "model_display": "GPT 6 Astra",
+  "task": "dzh",
+  "task_label": "地中海 0.2°",
+  "group": 1,
+  "prompt_sha256": "ed60d2d0403da116ee920e35b57d8eca0509572e4331d15e0459b831ea2f9894",
+  "error": "",
+  "score": {
+    "errors": 515,
+    "correct": 15886,
+    "score": 15886,
+    "max_score": 16401,
+    "cells": 16401,
+    "accuracy_pct": 96.85994756417291,
+    "normalized": 15691.311505396012,
+    "extra_land": 307,
+    "missing_land": 208,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 53.582098652521196,
+    "flip_horizontal_accuracy": 49.704286324004634
+  },
+  "map_metrics": {
+    "accuracy_pct": 96.859948,
+    "hss": 0.93693,
+    "boundary_f1_d0": 0.77016,
+    "boundary_f1_d1": 0.950548,
+    "boundary_f1_d2": 0.977876,
+    "narrow_water_keep": 0.635135,
+    "narrow_water_cells": 74,
+    "island_iou_median": 0.4,
+    "island_iou_area_weighted": 0.946306,
+    "island_iou_ge50": 0.4,
+    "component_recall": 0.52,
+    "n_ref_components": 25,
+    "n_pred_components": 17,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {}
+}

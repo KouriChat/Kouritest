@@ -1,0 +1,245 @@
+方法：脚本使用手写的近似大陆、半岛、岛屿和海岸线多边形。每个采样点通过点在多边形内判断自动分类；没有逐点调用模型推理，也不读取或下载任何外部地理数据。依赖：Python、`numpy`、`Pillow`。
+
+```python
+from pathlib import Path
+import csv
+import numpy as np
+from PIL import Image
+
+# Coordinate grid: west to east, north to south.
+LONS = np.round(np.arange(-9.0, 37.0 + 0.001, 0.2), 10)
+LATS = np.round(np.arange(45.0, 31.0 - 0.001, -0.2), 10)
+
+# Vertices are (longitude, latitude). These are deliberately hand-written
+# approximate geographic rules, not data loaded from a map.
+LAND_POLYGONS = [
+    # Iberian Peninsula
+    [
+        (-9.0, 45.0), (4.0, 45.0), (3.4, 43.2), (3.0, 42.5),
+        (2.5, 41.7), (1.5, 40.8), (0.5, 39.8), (-0.4, 39.0),
+        (-1.0, 38.2), (-1.7, 37.2), (-2.6, 36.6), (-4.0, 36.2),
+        (-5.5, 36.0), (-6.5, 36.4), (-7.3, 36.7), (-8.0, 37.0),
+        (-9.0, 37.0),
+    ],
+
+    # Continental Europe north of the Mediterranean
+    [
+        (-9.0, 45.0), (27.5, 45.0), (30.0, 45.0), (30.0, 43.0),
+        (29.0, 42.2), (27.5, 43.0), (26.5, 43.6), (25.2, 43.0),
+        (24.0, 42.3), (23.0, 41.7), (22.0, 41.3), (21.0, 40.8),
+        (20.0, 40.0), (19.4, 39.2), (18.7, 39.0), (18.1, 40.0),
+        (17.5, 41.0), (17.0, 42.0), (16.4, 43.0), (15.8, 44.0),
+        (14.7, 44.7), (13.5, 45.0), (12.5, 44.5), (11.5, 43.7),
+        (10.2, 43.0), (9.0, 43.0), (8.0, 43.5), (7.0, 43.8),
+        (6.0, 43.5), (5.0, 43.0), (4.0, 43.0), (3.0, 42.5),
+        (2.0, 42.0), (1.0, 42.0), (0.0, 43.0), (-1.0, 43.5),
+        (-2.0, 43.5), (-3.2, 43.6), (-4.5, 43.7), (-5.5, 43.5),
+        (-6.5, 43.6), (-7.5, 43.8), (-8.4, 43.7), (-9.0, 43.8),
+    ],
+
+    # Italian Peninsula
+    [
+        (7.0, 45.0), (9.0, 45.8), (11.5, 46.2), (13.5, 46.0),
+        (14.2, 45.2), (14.0, 44.2), (14.3, 43.5), (15.3, 42.3),
+        (16.5, 41.2), (17.3, 40.5), (16.7, 39.6), (15.7, 39.5),
+        (14.8, 40.0), (14.0, 40.5), (13.4, 40.0), (12.4, 39.4),
+        (11.5, 39.7), (10.7, 40.5), (10.0, 41.5), (9.4, 42.6),
+        (8.3, 43.5), (7.0, 44.0),
+    ],
+
+    # Mainland Greece and the southern Balkans
+    [
+        (19.0, 41.5), (21.5, 41.5), (23.0, 40.5), (23.7, 39.5),
+        (23.0, 38.7), (22.5, 38.0), (23.0, 37.2), (22.2, 36.7),
+        (21.2, 37.0), (20.7, 38.0), (20.0, 39.0), (19.2, 40.0),
+    ],
+    [
+        (21.8, 39.2), (23.0, 39.0), (23.8, 38.2), (23.5, 37.2),
+        (22.5, 36.7), (21.7, 37.0), (21.2, 38.0),
+    ],
+
+    # Anatolia
+    [
+        (26.0, 41.8), (28.0, 41.5), (30.0, 41.8), (32.0, 41.8),
+        (34.0, 41.7), (36.0, 41.2), (37.0, 41.2), (37.0, 31.0),
+        (26.0, 31.0), (26.0, 36.0), (27.0, 36.2), (28.0, 36.5),
+        (29.0, 36.5), (30.0, 36.3), (31.0, 36.2), (32.0, 36.1),
+        (33.0, 36.2), (34.0, 36.5), (35.0, 36.7), (36.0, 36.8),
+        (36.0, 37.5), (35.3, 38.0), (34.5, 38.2), (33.0, 38.3),
+        (32.0, 38.0), (31.0, 38.0), (30.0, 38.5), (29.0, 39.0),
+        (28.0, 39.5), (27.0, 40.0), (26.0, 40.5),
+    ],
+
+    # Levant
+    [
+        (35.5, 36.5), (36.5, 36.0), (37.0, 35.5), (37.0, 31.0),
+        (34.5, 31.0), (34.5, 31.8), (34.2, 32.5), (34.5, 33.3),
+        (35.1, 34.0), (35.7, 35.0),
+    ],
+
+    # North Africa, including the Sahara inside the requested frame
+    [
+        (-9.0, 31.0), (-9.0, 35.8), (-7.5, 35.8), (-6.0, 35.7),
+        (-5.2, 35.9), (-4.4, 35.2), (-3.0, 35.0), (-2.2, 35.3),
+        (-1.2, 35.1), (0.0, 35.4), (1.0, 36.0), (2.0, 36.8),
+        (3.2, 37.1), (4.8, 37.1), (6.0, 37.3), (7.0, 37.1),
+        (8.0, 36.8), (9.5, 37.1), (10.5, 37.2), (11.5, 37.0),
+        (12.0, 35.8), (13.5, 33.2), (15.0, 32.9), (16.5, 32.8),
+        (18.0, 32.9), (20.0, 32.7), (22.0, 32.5), (24.0, 32.6),
+        (25.5, 31.8), (27.0, 31.4), (30.0, 31.2), (34.5, 31.0),
+    ],
+
+    # Major islands
+    # Mallorca
+    [(2.15, 39.95), (2.8, 40.0), (3.35, 39.7), (3.45, 39.2),
+     (3.0, 38.8), (2.3, 38.75), (2.0, 39.2)],
+    # Menorca
+    [(3.75, 40.1), (4.3, 40.1), (4.4, 39.8), (4.1, 39.4),
+     (3.7, 39.6)],
+    # Ibiza and Formentera
+    [(1.1, 39.1), (1.55, 39.2), (1.65, 38.8), (1.25, 38.7)],
+    [(1.35, 38.75), (1.55, 38.75), (1.55, 38.6), (1.3, 38.6)],
+    # Corsica
+    [(8.55, 43.0), (9.4, 42.8), (9.5, 41.8), (9.1, 41.3),
+     (8.6, 41.4), (8.4, 42.2)],
+    # Sardinia
+    [(8.1, 41.3), (9.0, 41.2), (9.7, 40.0), (9.5, 39.0),
+     (8.8, 38.8), (8.2, 39.5), (8.0, 40.5)],
+    # Sicily
+    [(12.4, 38.2), (13.2, 38.4), (14.3, 38.0), (15.2, 37.5),
+     (15.1, 36.7), (14.0, 36.6), (13.0, 37.0), (12.4, 37.5)],
+    # Malta
+    [(14.2, 36.1), (14.6, 36.1), (14.6, 35.8), (14.2, 35.8)],
+    # Crete
+    [(23.4, 35.6), (24.3, 35.8), (25.4, 35.6), (26.3, 35.0),
+     (25.6, 34.8), (24.5, 35.0), (23.5, 35.2)],
+    # Euboea
+    [(23.4, 39.0), (24.1, 39.1), (24.7, 38.5), (24.3, 38.0),
+     (23.7, 38.3)],
+    # Rhodes
+    [(27.7, 36.5), (28.3, 36.4), (28.3, 35.8), (27.8, 35.8)],
+    # Lesbos, Chios, Samos
+    [(25.8, 39.4), (26.5, 39.5), (26.6, 38.9), (26.0, 38.8)],
+    [(26.0, 38.5), (26.5, 38.5), (26.4, 38.0), (26.0, 38.1)],
+    [(26.5, 37.8), (27.0, 37.8), (27.1, 37.4), (26.6, 37.4)],
+    # Cyprus
+    [(32.2, 35.7), (33.2, 35.7), (34.4, 35.1), (34.7, 34.6),
+     (34.0, 34.3), (33.0, 34.4), (32.3, 35.0)],
+    # Djerba
+    [(10.6, 33.9), (11.0, 33.9), (11.2, 33.5), (10.8, 33.3),
+     (10.5, 33.6)],
+]
+
+# Water polygons remove broad approximations that would otherwise cover
+# portions of the Black Sea and the Adriatic.
+WATER_POLYGONS = [
+    # Black Sea
+    [
+        (28.2, 45.0), (37.0, 45.0), (37.0, 41.0), (35.0, 41.0),
+        (33.0, 41.5), (31.0, 41.5), (29.5, 42.0), (28.0, 43.0),
+    ],
+    # Adriatic Sea
+    [
+        (12.2, 46.0), (15.5, 46.0), (15.5, 45.0), (14.7, 44.5),
+        (14.3, 43.5), (15.0, 42.5), (16.0, 41.5), (18.2, 40.0),
+        (18.8, 40.0), (19.0, 42.0), (18.0, 43.0), (17.0, 44.0),
+        (16.0, 45.0),
+    ],
+]
+
+
+def point_on_segment(x, y, ax, ay, bx, by, eps=1e-10):
+    cross = (x - ax) * (by - ay) - (y - ay) * (bx - ax)
+    if abs(cross) > eps:
+        return False
+    return (
+        min(ax, bx) - eps <= x <= max(ax, bx) + eps
+        and min(ay, by) - eps <= y <= max(ay, by) + eps
+    )
+
+
+def point_in_polygon(x, y, polygon):
+    inside = False
+    n = len(polygon)
+    for i in range(n):
+        ax, ay = polygon[i]
+        bx, by = polygon[(i + 1) % n]
+
+        if point_on_segment(x, y, ax, ay, bx, by):
+            return True
+
+        crosses = ((ay > y) != (by > y))
+        if crosses:
+            intersection_x = ax + (y - ay) * (bx - ax) / (by - ay)
+            if x < intersection_x:
+                inside = not inside
+    return inside
+
+
+def classify(lon, lat):
+    land = any(point_in_polygon(lon, lat, p) for p in LAND_POLYGONS)
+    water_override = any(point_in_polygon(lon, lat, p) for p in WATER_POLYGONS)
+    return 1 if land and not water_override else 0
+
+
+def build_matrix():
+    matrix = np.zeros((len(LATS), len(LONS)), dtype=np.uint8)
+    for row, lat in enumerate(LATS):
+        for col, lon in enumerate(LONS):
+            matrix[row, col] = classify(float(lon), float(lat))
+    return matrix
+
+
+def write_outputs(matrix):
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    with (output_dir / "candidate.csv").open(
+        "w", newline="", encoding="ascii"
+    ) as f:
+        writer = csv.writer(f, lineterminator="\n")
+        for row in matrix:
+            writer.writerow([int(value) for value in row])
+
+    # White land, black water.
+    image_array = np.where(matrix == 1, 255, 0).astype(np.uint8)
+    image = Image.fromarray(image_array, mode="L")
+    image.save(output_dir / "candidate.png")
+
+    enlarged = image.resize((len(LONS) * 8, len(LATS) * 8), Image.Resampling.NEAREST)
+    enlarged.save(output_dir / "candidate_8x.png")
+
+
+def validate(matrix):
+    assert matrix.shape == (71, 231)
+    assert matrix.size == 16401
+    assert np.all((matrix == 0) | (matrix == 1))
+
+    with (Path("outputs") / "candidate.csv").open(
+        "r", newline="", encoding="ascii"
+    ) as f:
+        rows = list(csv.reader(f))
+    assert len(rows) == 71
+    assert all(len(row) == 231 for row in rows)
+    assert all(value in {"0", "1"} for row in rows for value in row)
+
+    original = Image.open(Path("outputs") / "candidate.png").convert("L")
+    enlarged = Image.open(Path("outputs") / "candidate_8x.png").convert("L")
+    assert original.size == (231, 71)
+    assert enlarged.size == (1848, 568)
+    assert set(original.getdata()).issubset({0, 255})
+    assert set(enlarged.getdata()).issubset({0, 255})
+
+    expected = np.repeat(np.repeat(np.asarray(original), 8, axis=0), 8, axis=1)
+    assert np.array_equal(expected, np.asarray(enlarged))
+
+
+def main():
+    matrix = build_matrix()
+    write_outputs(matrix)
+    validate(matrix)
+
+
+if __name__ == "__main__":
+    main()
+```

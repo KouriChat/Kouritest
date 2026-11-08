@@ -1,0 +1,77 @@
+{
+  "run_id": "20261026-211754_gpt-6.1-sol_seto_g5_06178cf0",
+  "channel": "A",
+  "batch_id": "batch-06",
+  "started_at": "2026-10-26T21:17:54+08:00",
+  "finished_at": "2026-10-26T21:20:17+08:00",
+  "duration_sec": 142.9,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": 0,
+  "model": "gpt-6.1-sol-codex",
+  "model_display": "GPT 6.1 Sol",
+  "task": "seto",
+  "task_label": "濑户内海 2/63°",
+  "group": 5,
+  "prompt_sha256": "551d6fb3df8fe61af981ea454ba6fed3f898405e2c81a6cf0981578386d8f3c1",
+  "error": "",
+  "score": {
+    "errors": 5833,
+    "correct": 10359,
+    "score": 10359,
+    "max_score": 16192,
+    "cells": 16192,
+    "accuracy_pct": 63.97603754940712,
+    "normalized": 10364.118083003952,
+    "extra_land": 4187,
+    "missing_land": 1646,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 51.78483201581028,
+    "flip_horizontal_accuracy": 48.4375
+  },
+  "map_metrics": {
+    "accuracy_pct": 63.976038,
+    "hss": 0.29178,
+    "boundary_f1_d0": 0.206958,
+    "boundary_f1_d1": 0.350442,
+    "boundary_f1_d2": 0.458182,
+    "narrow_water_keep": 0.181818,
+    "narrow_water_cells": 22,
+    "island_iou_median": 0.001815,
+    "island_iou_area_weighted": 0.385576,
+    "island_iou_ge50": 0.0,
+    "component_recall": 0.125,
+    "n_ref_components": 24,
+    "n_pred_components": 12,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {}
+}

@@ -1,0 +1,165 @@
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+# WGS84 sample points: 64 rows north-to-south, 253 columns west-to-east.
+lons = 129.0 + np.arange(253, dtype=np.float64) * (8.0 / 252.0)
+lats = 35.0 - np.arange(64, dtype=np.float64) * (2.0 / 63.0)
+xx, yy = np.meshgrid(lons, lats)
+land = np.zeros((64, 253), dtype=bool)
+
+
+def add_polygon(points):
+    """Rasterize a hand-drawn lon/lat polygon with point-in-polygon tests."""
+    px = np.asarray([p[0] for p in points], dtype=np.float64)
+    py = np.asarray([p[1] for p in points], dtype=np.float64)
+    inside = np.zeros(land.shape, dtype=bool)
+    j = len(points) - 1
+    for i in range(len(points)):
+        crosses = ((py[i] > yy) != (py[j] > yy)) & (
+            xx < (px[j] - px[i]) * (yy - py[i]) /
+            ((py[j] - py[i]) + 1e-30) + px[i]
+        )
+        inside ^= crosses
+        j = i
+    land[:] |= inside
+
+
+def add_island(lon, lat, rx, ry, sides=10, angle=0.0):
+    """Approximate a small island with an ellipse-like polygon."""
+    theta = np.linspace(0.0, 2.0 * np.pi, sides, endpoint=False) + angle
+    scale = 1.0 + 0.12 * np.sin(3.0 * theta + lon * 4.0)
+    add_polygon([
+        (lon + rx * scale[k] * np.cos(theta[k]),
+         lat + ry * scale[k] * np.sin(theta[k]))
+        for k in range(sides)
+    ])
+# Kyushu, including its eastern coast facing the Bungo Channel.
+add_polygon([
+    (129.0, 34.2), (129.5, 34.15), (130.0, 34.05), (130.45, 33.95),
+    (130.72, 33.88), (130.85, 33.78), (130.92, 33.62), (131.08, 33.48),
+    (131.30, 33.35), (131.52, 33.20), (131.72, 33.00), (129.0, 33.0)
+])
+
+# Southern Honshu coast, Osaka Bay, Kii Peninsula, and Ise Bay.
+add_polygon([
+    (130.78, 34.02), (130.92, 33.98), (131.10, 33.99), (131.30, 34.02),
+    (131.48, 33.99), (131.70, 34.02), (131.88, 34.04), (132.05, 34.05),
+    (132.22, 34.10), (132.37, 34.18), (132.48, 34.24), (132.64, 34.25),
+    (132.80, 34.27), (132.94, 34.31), (133.10, 34.34), (133.27, 34.37),
+    (133.46, 34.41), (133.64, 34.44), (133.82, 34.47), (134.00, 34.50),
+    (134.18, 34.53), (134.36, 34.56), (134.54, 34.59), (134.72, 34.62),
+    (134.91, 34.65), (135.10, 34.66), (135.18, 34.59), (135.18, 34.50),
+    (135.12, 34.41), (135.00, 34.34), (134.92, 34.24), (134.88, 34.12),
+    (134.86, 34.00), (134.90, 33.88), (134.98, 33.76), (135.05, 33.62),
+    (135.08, 33.48), (135.04, 33.34), (135.10, 33.42), (135.20, 33.53),
+    (135.31, 33.68), (135.42, 33.83), (135.55, 33.98), (135.68, 34.10),
+    (135.82, 34.20), (135.94, 34.30), (136.02, 34.40), (136.12, 34.48),
+    (136.25, 34.53), (136.40, 34.57), (136.57, 34.60), (136.72, 34.64),
+    (136.86, 34.70), (137.0, 34.78), (137.0, 35.4), (129.0, 35.4),
+    (129.0, 34.25), (130.0, 34.25)
+])
+# Shikoku, south of the Inland Sea.
+add_polygon([
+    (132.05, 34.25), (132.22, 34.32), (132.42, 34.36), (132.64, 34.38),
+    (132.86, 34.40), (133.08, 34.42), (133.30, 34.43), (133.52, 34.43),
+    (133.74, 34.41), (133.94, 34.38), (134.14, 34.34), (134.35, 34.30),
+    (134.52, 34.24), (134.55, 34.15), (134.48, 34.04), (134.40, 33.94),
+    (134.28, 33.85), (134.12, 33.78), (133.92, 33.72), (133.70, 33.68),
+    (133.48, 33.65), (133.25, 33.64), (133.03, 33.67), (132.82, 33.71),
+    (132.62, 33.77), (132.43, 33.85), (132.27, 33.95), (132.14, 34.06),
+    (132.06, 34.16)
+])
+
+# Awaji Island, between Shikoku and Honshu.
+add_polygon([
+    (134.65, 34.68), (134.78, 34.70), (134.88, 34.64), (134.91, 34.54),
+    (134.87, 34.44), (134.80, 34.37), (134.73, 34.43), (134.68, 34.53)
+])
+
+# Western Inland Sea islands.
+for item in [
+    (131.45, 33.99, 0.09, 0.035), (132.02, 34.05, 0.035, 0.025),
+    (132.20, 34.12, 0.035, 0.025), (132.36, 34.25, 0.055, 0.035),
+    (132.43, 34.28, 0.08, 0.045), (132.55, 34.16, 0.075, 0.035),
+    (132.73, 34.20, 0.045, 0.03), (132.88, 34.23, 0.04, 0.025),
+    (133.02, 34.28, 0.035, 0.023), (133.20, 34.31, 0.045, 0.027),
+    (133.35, 34.34, 0.035, 0.022), (133.53, 34.36, 0.03, 0.02),
+    (133.74, 34.40, 0.03, 0.02), (133.88, 34.43, 0.06, 0.035),
+    (134.02, 34.46, 0.035, 0.025), (134.18, 34.49, 0.04, 0.025),
+    (134.32, 34.51, 0.03, 0.02), (134.45, 34.55, 0.035, 0.022),
+]:
+    add_island(*item)
+# Geiyo Islands: the chain between Hiroshima/Okayama and Shikoku.
+for item in [
+    (132.98, 34.18, 0.08, 0.055), (133.08, 34.25, 0.045, 0.03),
+    (133.12, 34.20, 0.045, 0.03), (133.17, 34.16, 0.10, 0.065),
+    (133.24, 34.25, 0.07, 0.045), (133.28, 34.19, 0.04, 0.03),
+    (133.34, 34.24, 0.04, 0.025), (133.40, 34.20, 0.07, 0.045),
+    (133.43, 34.27, 0.035, 0.025), (133.52, 34.25, 0.08, 0.05),
+    (133.61, 34.29, 0.09, 0.055), (133.69, 34.34, 0.035, 0.025),
+    (133.77, 34.31, 0.04, 0.028), (133.84, 34.29, 0.035, 0.025),
+    (133.92, 34.30, 0.055, 0.035), (134.00, 34.34, 0.035, 0.025),
+]:
+    add_island(*item)
+
+# Shodoshima, Naoshima, Teshima, Inujima, and nearby islands.
+for item in [
+    (134.30, 34.52, 0.15, 0.09), (134.00, 34.48, 0.045, 0.035),
+    (134.05, 34.52, 0.035, 0.025), (134.15, 34.58, 0.03, 0.02),
+    (133.96, 34.54, 0.025, 0.02), (134.24, 34.42, 0.04, 0.025),
+    (134.38, 34.36, 0.045, 0.025), (134.48, 34.31, 0.035, 0.023),
+]:
+    add_island(*item)
+# Islands around the western entrance and Bungo Channel.
+for item in [
+    (131.00, 33.98, 0.035, 0.022), (131.15, 33.97, 0.04, 0.025),
+    (131.63, 33.93, 0.035, 0.022), (131.83, 33.98, 0.03, 0.02),
+    (132.02, 33.98, 0.03, 0.02), (132.20, 33.98, 0.035, 0.022),
+    (132.45, 33.94, 0.035, 0.02), (132.70, 33.97, 0.03, 0.02),
+    (132.91, 33.95, 0.025, 0.018), (133.10, 33.90, 0.035, 0.02),
+    (133.34, 33.88, 0.03, 0.02), (133.65, 33.90, 0.035, 0.02),
+    (133.90, 33.91, 0.03, 0.02), (134.06, 33.97, 0.035, 0.02),
+    (134.22, 33.98, 0.03, 0.02), (134.62, 33.98, 0.035, 0.022),
+    (134.77, 33.92, 0.025, 0.018),
+]:
+    add_island(*item)
+
+# Ise Bay and the Chita/Atsumi peninsulas.
+add_polygon([
+    (136.50, 35.25), (136.66, 35.12), (136.78, 34.98), (136.84, 34.83),
+    (136.82, 34.70), (136.76, 34.61), (136.69, 34.56), (136.65, 34.50),
+    (136.68, 34.45), (136.80, 34.44), (136.91, 34.49), (137.0, 34.56),
+    (137.0, 35.4)
+])
+# Discrete islands in the Inland Sea and around Ise Bay.
+for item in [
+    (134.74, 34.60, 0.035, 0.022), (134.86, 34.55, 0.03, 0.02),
+    (135.00, 34.53, 0.025, 0.018), (135.12, 34.49, 0.025, 0.018),
+    (136.55, 34.55, 0.03, 0.02), (136.72, 34.67, 0.035, 0.022),
+]:
+    add_island(*item)
+
+matrix = land.astype(np.uint8)
+outputs = Path("outputs")
+outputs.mkdir(parents=True, exist_ok=True)
+
+np.savetxt(outputs / "candidate.csv", matrix, fmt="%d", delimiter=",")
+image = Image.fromarray(np.where(land, 255, 0).astype(np.uint8), mode="L")
+image.save(outputs / "candidate.png")
+image.resize((2024, 512), resample=Image.Resampling.NEAREST).save(
+    outputs / "candidate_8x.png"
+)
+
+loaded = np.loadtxt(outputs / "candidate.csv", delimiter=",", dtype=np.uint8)
+assert loaded.shape == (64, 253)
+assert loaded.size == 16192 and np.isin(loaded, (0, 1)).all()
+assert Image.open(outputs / "candidate.png").size == (253, 64)
+assert set(Image.open(outputs / "candidate.png").getdata()) <= {0, 255}
+assert Image.open(outputs / "candidate_8x.png").size == (2024, 512)
+assert np.array_equal(
+    np.asarray(Image.open(outputs / "candidate_8x.png"))[::8, ::8],
+    np.asarray(Image.open(outputs / "candidate.png"))
+)
+print("Generated and validated matrix and PNG files.")

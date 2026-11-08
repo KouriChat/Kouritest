@@ -1,0 +1,77 @@
+{
+  "run_id": "20261025-091105_deepseek-v4.1-flash_global_g1_1f99894e",
+  "channel": "A",
+  "batch_id": "batch-06",
+  "started_at": "2026-10-25T09:11:05+08:00",
+  "finished_at": "2026-10-25T09:30:34+08:00",
+  "duration_sec": 1169.3,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 2,
+  "request_retries": 3,
+  "model": "deepseek-v4.1-flash",
+  "model_display": "DeepSeek V4.1 Flash",
+  "task": "global",
+  "task_label": "全球 2°",
+  "group": 1,
+  "prompt_sha256": "3b29f0597bf52e8706872573ef54a081c777de4a7d6ad8268514209bffa9dd12",
+  "error": "",
+  "score": {
+    "errors": 1731,
+    "correct": 14469,
+    "score": 14469,
+    "max_score": 16200,
+    "cells": 16200,
+    "accuracy_pct": 89.31481481481481,
+    "normalized": 14469.0,
+    "extra_land": 596,
+    "missing_land": 1135,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 52.77160493827161,
+    "flip_horizontal_accuracy": 64.69753086419753
+  },
+  "map_metrics": {
+    "accuracy_pct": 89.314815,
+    "hss": 0.753198,
+    "boundary_f1_d0": 0.671459,
+    "boundary_f1_d1": 0.861077,
+    "boundary_f1_d2": 0.917585,
+    "narrow_water_keep": 0.619718,
+    "narrow_water_cells": 71,
+    "island_iou_median": 0.219048,
+    "island_iou_area_weighted": 0.719383,
+    "island_iou_ge50": 0.294118,
+    "component_recall": 0.441176,
+    "n_ref_components": 34,
+    "n_pred_components": 48,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {}
+}

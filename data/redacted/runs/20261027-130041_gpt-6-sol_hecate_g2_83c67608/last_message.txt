@@ -1,0 +1,1 @@
+I’ll encode approximate coastlines and islands from geographic knowledge, then check the generated matrix and PNGs for the requested dimensions and values.

@@ -1,0 +1,30 @@
+{
+  "run_id": "20261027-135435_gpt-6.1-sol_dzh_g1_7d21fece",
+  "channel": "E",
+  "batch_id": "batch-12",
+  "started_at": "2026-10-27T13:54:35+08:00",
+  "finished_at": "2026-10-27T14:39:24+08:00",
+  "duration_sec": 2688.7,
+  "status": "failed",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 2,
+  "request_retries": 5,
+  "model": "gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "dzh",
+  "task_label": "地中海 0.2°",
+  "group": 1,
+  "prompt_sha256": "ed60d2d0403da116ee920e35b57d8eca0509572e4331d15e0459b831ea2f9894",
+  "error": "RuntimeError: {\"type\": \"response.failed\", \"sequence_number\": 0, \"response\": {\"id\": \"resp_8c3ffcde95fe494aac861573dbba74a5\", \"object\": \"response\", \"created_at\": 1793083163, \"model\": \"gpt-6.1-sol\", \"status\": \"failed\", \"output\": [], \"error\": {\"code\": \"upstream_error\", \"message\": \"Upstream service temporarily unavailable\"}}}",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "last_message.txt": "runs/20261027-135435_gpt-6.1-sol_dzh_g1_7d21fece/last_message.txt"
+  }
+}

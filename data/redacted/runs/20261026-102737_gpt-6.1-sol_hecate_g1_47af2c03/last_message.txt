@@ -1,0 +1,158 @@
+以下脚本使用手写的大陆岸线折线和岛屿多边形，对每个采样点做点在多边形内判断；这不是逐点独立推理，也未使用外部地理数据。运行依赖为 Python、NumPy 和 Pillow。受当前交付形式限制，我无法在此直接运行脚本或附上生成后的图片；脚本会在运行时生成三个文件。
+
+```python
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+ROWS = COLS = 127
+STEP = 2 / 126
+OUT = Path("outputs")
+
+# 手工近似的大陆西岸，从北向南描绘；大陆位于岸线以东。
+# 坐标为 (经度, 纬度)，WGS84 十进制度。
+MAINLAND_COAST = [
+    (-130.15, 55.05),
+    (-130.34, 54.88),
+    (-130.30, 54.73),
+    (-130.12, 54.59),
+    (-130.02, 54.43),
+    (-129.94, 54.25),
+    (-129.98, 54.08),
+    (-130.10, 53.94),
+    (-130.28, 53.82),
+    (-130.40, 53.66),
+    (-130.34, 53.50),
+    (-130.17, 53.35),
+    (-129.98, 53.20),
+    (-129.82, 53.00),
+]
+MAINLAND = MAINLAND_COAST + [
+    (-128.5, 53.0),
+    (-128.5, 55.05),
+]
+
+# 粗略手绘的近岸岛屿多边形。只包含大致落入任务框内的陆地。
+ISLANDS = [
+    # Banks Island
+    [
+        (-130.18, 53.60), (-130.02, 53.61), (-129.93, 53.52),
+        (-129.93, 53.39), (-129.98, 53.26), (-130.09, 53.21),
+        (-130.17, 53.31), (-130.21, 53.47),
+    ],
+    # Porcher Island
+    [
+        (-130.62, 53.94), (-130.48, 53.98), (-130.37, 53.91),
+        (-130.34, 53.79), (-130.42, 53.69), (-130.57, 53.71),
+        (-130.65, 53.82),
+    ],
+    # Dolphin Island
+    [
+        (-130.73, 53.96), (-130.65, 53.99), (-130.59, 53.93),
+        (-130.61, 53.84), (-130.69, 53.81), (-130.75, 53.87),
+    ],
+    # A small group of nearshore islands north of Banks Island
+    [
+        (-130.40, 54.08), (-130.33, 54.10), (-130.28, 54.05),
+        (-130.31, 53.99), (-130.38, 54.00),
+    ],
+    [
+        (-130.59, 54.18), (-130.53, 54.21), (-130.47, 54.16),
+        (-130.50, 54.10), (-130.57, 54.11),
+    ],
+    [
+        (-130.26, 53.84), (-130.21, 53.87), (-130.16, 53.83),
+        (-130.18, 53.78), (-130.24, 53.78),
+    ],
+    # Small islands near the northern part of the frame
+    [
+        (-130.66, 54.74), (-130.60, 54.77), (-130.55, 54.73),
+        (-130.57, 54.68), (-130.63, 54.68),
+    ],
+    [
+        (-130.45, 54.93), (-130.40, 54.96), (-130.35, 54.92),
+        (-130.37, 54.87), (-130.43, 54.88),
+    ],
+]
+
+
+def point_in_polygon(lon, lat, polygon):
+    """Ray-casting point test; polygon edges count as land."""
+    inside = False
+    n = len(polygon)
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+
+        # Include points lying on an edge.
+        cross = (lon - x1) * (y2 - y1) - (lat - y1) * (x2 - x1)
+        if (
+            abs(cross) < 1e-12
+            and min(x1, x2) - 1e-12 <= lon <= max(x1, x2) + 1e-12
+            and min(y1, y2) - 1e-12 <= lat <= max(y1, y2) + 1e-12
+        ):
+            return True
+
+        if (y1 > lat) != (y2 > lat):
+            crossing_lon = x1 + (lat - y1) * (x2 - x1) / (y2 - y1)
+            if lon < crossing_lon:
+                inside = not inside
+    return inside
+
+
+def is_land(lon, lat):
+    if point_in_polygon(lon, lat, MAINLAND):
+        return True
+    return any(point_in_polygon(lon, lat, island) for island in ISLANDS)
+
+
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+
+    # Row 0 is 55N; column 0 is 131W. Coordinates include both endpoints.
+    latitudes = 55.0 - np.arange(ROWS) * STEP
+    longitudes = -131.0 + np.arange(COLS) * STEP
+    matrix = np.zeros((ROWS, COLS), dtype=np.uint8)
+
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            matrix[row, col] = int(is_land(float(lon), float(lat)))
+
+    with (OUT / "candidate.csv").open("w", encoding="ascii", newline="") as f:
+        for row in matrix:
+            f.write(",".join(str(int(value)) for value in row) + "\n")
+
+    # 1=white land, 0=black water; no filtering or coastline processing.
+    image = Image.fromarray(matrix * 255, mode="L")
+    image.save(OUT / "candidate.png")
+    image.resize((COLS * 8, ROWS * 8), Image.Resampling.NEAREST).save(
+        OUT / "candidate_8x.png"
+    )
+
+    # Validate dimensions, values, CSV structure, and nearest-neighbor scaling.
+    assert matrix.shape == (127, 127)
+    assert matrix.size == 16129
+    assert set(np.unique(matrix)).issubset({0, 1})
+
+    with (OUT / "candidate.csv").open("r", encoding="ascii") as f:
+        lines = f.read().splitlines()
+    assert len(lines) == 127
+    assert all(len(line.split(",")) == 127 for line in lines)
+    assert all(value in {"0", "1"} for line in lines for value in line.split(","))
+
+    original = Image.open(OUT / "candidate.png")
+    enlarged = Image.open(OUT / "candidate_8x.png")
+    assert original.size == (127, 127)
+    assert set(original.getdata()).issubset({0, 255})
+    assert enlarged.size == (1016, 1016)
+    assert enlarged == original.resize((1016, 1016), Image.Resampling.NEAREST)
+
+    print("Created and validated outputs/candidate.csv")
+    print("Created and validated outputs/candidate.png")
+    print("Created and validated outputs/candidate_8x.png")
+
+
+if __name__ == "__main__":
+    main()
+```

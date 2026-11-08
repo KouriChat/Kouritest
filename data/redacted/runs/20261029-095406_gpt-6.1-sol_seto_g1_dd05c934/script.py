@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""Create an approximate Seto Inland Sea land/water grid from hand-written rules."""
+
+import csv
+import os
+
+import numpy as np
+from PIL import Image
+
+
+ROWS = 64
+COLS = 253
+LAT_NORTH = 35.0
+LAT_SOUTH = 33.0
+LON_WEST = 129.0
+LON_EAST = 137.0
+
+# Polygons are (longitude, latitude), ordered around the coastline.
+# Broad outer outlines approximate the major islands in the requested region.
+LAND_POLYGONS = [
+    # Western Honshu / Chugoku, including the coast north of the western Seto Sea.
+    [
+        (129.0, 35.0), (131.0, 35.0), (131.5, 34.92), (132.0, 34.88),
+        (132.5, 34.88), (133.0, 34.93), (133.5, 34.98), (134.0, 35.0),
+        (137.0, 35.0), (137.0, 37.0), (129.0, 37.0),
+    ],
+    # Southern coast of western and central Honshu.
+    [
+        (130.88, 34.00), (131.05, 34.06), (131.22, 34.08),
+        (131.38, 34.12), (131.58, 34.17), (131.78, 34.22),
+        (132.00, 34.22), (132.22, 34.20), (132.45, 34.23),
+        (132.68, 34.25), (132.90, 34.29), (133.12, 34.33),
+        (133.34, 34.35), (133.58, 34.37), (133.82, 34.40),
+        (134.02, 34.43), (134.22, 34.48), (134.43, 34.52),
+        (134.62, 34.55), (134.82, 34.59), (135.00, 34.62),
+        (135.17, 34.65), (135.35, 34.68), (135.55, 34.70),
+        (135.75, 34.72), (136.00, 34.75), (136.25, 34.78),
+        (136.50, 34.80), (136.75, 34.82), (137.0, 34.84),
+        (137.0, 37.0), (130.0, 37.0),
+    ],
+    # Kii Peninsula and the Pacific-facing coast around its southern tip.
+    [
+        (134.65, 34.36), (134.86, 34.32), (135.05, 34.28),
+        (135.22, 34.22), (135.38, 34.14), (135.50, 34.05),
+        (135.56, 33.94), (135.55, 33.82), (135.49, 33.70),
+        (135.40, 33.58), (135.30, 33.48), (135.20, 33.40),
+        (135.08, 33.36), (134.96, 33.39), (134.88, 33.48),
+        (134.84, 33.62), (134.82, 33.78), (134.78, 33.94),
+        (134.72, 34.10),
+    ],
+    # Chita Peninsula, on the eastern side of Ise Bay.
+    [
+        (136.65, 35.02), (136.92, 35.00), (136.98, 34.88),
+        (136.90, 34.75), (136.82, 34.61), (136.76, 34.47),
+        (136.68, 34.38), (136.58, 34.42), (136.57, 34.55),
+        (136.60, 34.69), (136.61, 34.83),
+    ],
+    # Kyushu, with its northeastern shore facing the western Seto Sea.
+    [
+        (129.0, 35.0), (130.48, 35.0), (130.52, 34.88),
+        (130.48, 34.75), (130.42, 34.62), (130.40, 34.48),
+        (130.35, 34.35), (130.28, 34.22), (130.18, 34.11),
+        (130.05, 34.02), (129.90, 33.96), (129.73, 33.92),
+        (129.55, 33.88), (129.35, 33.84), (129.15, 33.82),
+        (129.0, 33.82),
+    ],
+    # Shikoku.
+    [
+        (132.02, 34.26), (132.24, 34.24), (132.45, 34.23),
+        (132.67, 34.20), (132.90, 34.18), (133.15, 34.15),
+        (133.40, 34.12), (133.66, 34.10), (133.92, 34.08),
+        (134.18, 34.06), (134.43, 34.04), (134.63, 34.00),
+        (134.76, 33.92), (134.78, 33.82), (134.70, 33.72),
+        (134.55, 33.63), (134.35, 33.56), (134.12, 33.50),
+        (133.90, 33.45), (133.68, 33.42), (133.45, 33.40),
+        (133.22, 33.39), (132.98, 33.40), (132.74, 33.42),
+        (132.52, 33.45), (132.32, 33.50), (132.16, 33.58),
+        (132.06, 33.70), (132.00, 33.86), (131.98, 34.03),
+    ],
+]
+
+# Hand-drawn bays and straits, carved from otherwise broad land outlines.
+WATER_POLYGONS = [
+    # Ise Bay, broadly bounded by Mie, Aichi and the Chita Peninsula.
+    [
+        (136.10, 34.82), (136.28, 34.83), (136.45, 34.84),
+        (136.61, 34.83), (136.68, 34.77), (136.66, 34.67),
+        (136.63, 34.57), (136.59, 34.49), (136.51, 34.45),
+        (136.42, 34.47), (136.32, 34.52), (136.22, 34.58),
+        (136.12, 34.66), (136.05, 34.75),
+    ],
+    # Osaka Bay.
+    [
+        (134.72, 34.72), (134.94, 34.72), (135.12, 34.73),
+        (135.28, 34.71), (135.36, 34.66), (135.33, 34.58),
+        (135.25, 34.52), (135.14, 34.49), (135.01, 34.50),
+        (134.88, 34.53), (134.78, 34.58), (134.72, 34.65),
+    ],
+    # Harima-nada and adjacent Seto water, kept within the island coastlines.
+    [
+        (134.15, 34.68), (134.43, 34.68), (134.65, 34.66),
+        (134.76, 34.61), (134.73, 34.55), (134.60, 34.51),
+        (134.42, 34.50), (134.24, 34.52), (134.12, 34.57),
+    ],
+]
+
+# Small islands are approximated as ellipses with radii in kilometers.
+# These cover prominent islands and clusters, not every tiny islet.
+ISLANDS_KM = [
+    # Western Seto and Hiroshima Bay.
+    (131.95, 34.18, 7, 3), (132.22, 34.16, 5, 3),
+    (132.45, 34.20, 5, 3), (132.63, 34.24, 4, 3),
+    (132.82, 34.25, 4, 3), (132.98, 34.28, 4, 3),
+    (133.16, 34.30, 7, 4), (133.33, 34.32, 4, 3),
+    # Geiyo / Shimanami islands.
+    (132.91, 34.30, 8, 5), (133.06, 34.25, 7, 5),
+    (133.18, 34.31, 8, 5), (133.31, 34.37, 8, 5),
+    (133.43, 34.39, 5, 4), (133.54, 34.35, 5, 3),
+    (133.67, 34.36, 5, 3), (133.81, 34.38, 4, 3),
+    # Islands off Okayama, Kagawa and the eastern Seto Sea.
+    (133.72, 34.55, 5, 3), (133.91, 34.55, 5, 3),
+    (134.10, 34.55, 6, 4), (134.25, 34.54, 5, 3),
+    (134.38, 34.52, 5, 3), (134.53, 34.51, 5, 3),
+    (134.68, 34.48, 5, 3), (134.82, 34.46, 5, 3),
+    (134.97, 34.43, 4, 3), (135.12, 34.42, 4, 3),
+    # Awaji Island.
+    (134.92, 34.47, 9, 27),
+    # Shodoshima and nearby islands.
+    (134.30, 34.52, 16, 7), (134.10, 34.46, 5, 3),
+    (133.98, 34.48, 5, 3), (133.84, 34.50, 4, 3),
+    # Islands in Hiroshima and Yamaguchi waters.
+    (132.35, 34.08, 6, 4), (132.54, 34.10, 5, 3),
+    (132.76, 34.12, 5, 3), (132.98, 34.12, 5, 3),
+    (133.18, 34.10, 5, 3), (133.39, 34.08, 5, 3),
+    (130.93, 33.96, 10, 5), (131.15, 33.98, 5, 3),
+    # Ise Bay and its mouth.
+    (136.72, 34.62, 5, 4), (136.82, 34.55, 4, 3),
+]
+
+
+def point_in_polygon(lon, lat, polygon):
+    """Return whether a point is inside a polygon using ray crossing."""
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if (yi > lat) != (yj > lat):
+            crossing_lon = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < crossing_lon:
+                inside = not inside
+        j = i
+    return inside
+
+
+def in_island(lon, lat, island):
+    """Test a point against an ellipse specified by kilometer radii."""
+    center_lon, center_lat, radius_x_km, radius_y_km = island
+    km_per_lon_degree = 111.32 * max(0.1, np.cos(np.deg2rad(center_lat)))
+    dx = (lon - center_lon) * km_per_lon_degree
+    dy = (lat - center_lat) * 110.57
+    return (dx / radius_x_km) ** 2 + (dy / radius_y_km) ** 2 <= 1.0
+
+
+def is_land(lon, lat):
+    land = any(point_in_polygon(lon, lat, polygon) for polygon in LAND_POLYGONS)
+
+    # Bays are water even where the coarse outer land outlines overlap them.
+    if any(point_in_polygon(lon, lat, polygon) for polygon in WATER_POLYGONS):
+        land = False
+
+    # Islands take precedence over broad bay/water approximations.
+    if any(in_island(lon, lat, island) for island in ISLANDS_KM):
+        land = True
+
+    return land
+
+
+def main():
+    os.makedirs("outputs", exist_ok=True)
+
+    latitudes = np.linspace(LAT_NORTH, LAT_SOUTH, ROWS)
+    longitudes = np.linspace(LON_WEST, LON_EAST, COLS)
+
+    matrix = np.zeros((ROWS, COLS), dtype=np.uint8)
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            matrix[row, col] = 1 if is_land(float(lon), float(lat)) else 0
+
+    with open("outputs/candidate.csv", "w", newline="", encoding="ascii") as file:
+        writer = csv.writer(file, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # 0 is black water; 1 is white land.
+    pixels = np.where(matrix[:, :, None] == 1, 255, 0).astype(np.uint8)
+    rgb = np.repeat(pixels, 3, axis=2)
+    image = Image.fromarray(rgb, mode="RGB")
+    image.save("outputs/candidate.png")
+
+    enlarged = image.resize(
+        (COLS * 8, ROWS * 8),
+        resample=Image.Resampling.NEAREST,
+    )
+    enlarged.save("outputs/candidate_8x.png")
+
+    assert matrix.shape == (64, 253)
+    assert int(matrix.size) == 16192
+    assert set(np.unique(matrix).tolist()) <= {0, 1}
+    assert image.size == (253, 64)
+    assert enlarged.size == (2024, 512)
+    assert set(image.getdata()) <= {(0, 0, 0), (255, 255, 255)}
+
+    print("Wrote outputs/candidate.csv (64 rows x 253 columns)")
+    print("Wrote outputs/candidate.png (253 x 64)")
+    print("Wrote outputs/candidate_8x.png (2024 x 512, nearest-neighbor)")
+
+
+if __name__ == "__main__":
+    main()

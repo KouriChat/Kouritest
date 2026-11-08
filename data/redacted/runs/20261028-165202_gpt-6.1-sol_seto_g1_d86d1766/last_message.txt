@@ -1,0 +1,115 @@
+下面的脚本用手写的粗略海岸线多边形和岛屿椭圆规则分类采样点；矩阵值由这些规则计算，不是对每个点分别推理。脚本不读取或查询外部地理数据。运行依赖为 `numpy` 和 `Pillow`。
+
+```python
+from pathlib import Path
+import csv
+import numpy as np
+from PIL import Image
+
+# Approximate hand-drawn land outlines, in (longitude, latitude).
+# Polygons intentionally prioritize the major coastlines and islands.
+LAND = [
+    # Honshu, from western Chugoku around the Pacific coast and back via the north.
+    [
+        (130.85, 33.95), (131.35, 34.00), (131.80, 33.90), (132.20, 33.88),
+        (132.65, 34.00), (133.10, 33.95), (133.55, 34.05), (134.00, 33.95),
+        (134.45, 34.05), (134.85, 33.85), (135.15, 33.55), (135.50, 33.45),
+        (135.80, 33.35), (136.05, 33.55), (136.15, 33.90), (136.35, 34.05),
+        (136.55, 33.95), (136.72, 34.15), (136.95, 34.30), (137.00, 34.48),
+        (137.00, 36.00), (130.60, 36.00), (130.60, 35.70), (130.25, 35.55),
+        (130.45, 35.20), (130.75, 35.05), (130.55, 34.80), (130.85, 34.60),
+        (130.60, 34.40), (130.85, 34.20),
+    ],
+    # Kyushu, southern portion clipped by the sampling frame.
+    [
+        (129.55, 33.90), (130.05, 34.00), (130.40, 33.85), (130.75, 33.90),
+        (131.05, 33.75), (131.40, 33.75), (131.70, 33.55), (131.85, 33.30),
+        (131.70, 33.00), (131.35, 32.85), (131.10, 32.55), (130.85, 32.20),
+        (130.55, 31.95), (130.25, 31.55), (129.90, 31.30), (129.65, 31.55),
+        (129.40, 32.00), (129.30, 32.55), (129.45, 33.05), (129.35, 33.45),
+    ],
+    # Shikoku.
+    [
+        (132.00, 33.55), (132.45, 33.75), (132.95, 33.85), (133.40, 34.05),
+        (133.85, 34.20), (134.25, 34.22), (134.55, 34.05), (134.75, 33.80),
+        (134.55, 33.55), (134.15, 33.35), (133.75, 33.20), (133.30, 33.25),
+        (132.90, 33.15), (132.50, 33.30), (132.15, 33.25),
+    ],
+    # Awaji Island.
+    [
+        (134.75, 34.65), (134.95, 34.55), (135.02, 34.30), (134.93, 34.05),
+        (134.78, 34.10), (134.70, 34.35),
+    ],
+    # Tsushima and Iki.
+    [
+        (129.18, 34.70), (129.42, 34.62), (129.48, 34.30),
+        (129.38, 34.05), (129.17, 34.18), (129.08, 34.45),
+    ],
+    [(129.65, 33.90), (129.85, 33.87), (129.90, 33.70), (129.73, 33.63)],
+]
+
+# Elliptical island approximations: center longitude, center latitude,
+# east-west radius, north-south radius.
+ISLANDS = [
+    # Seto Inland Sea: major islands and a representative set of smaller islands.
+    (132.55, 34.25, .12, .08), (132.75, 34.20, .10, .07),
+    (132.95, 34.18, .12, .07), (133.18, 34.15, .10, .06),
+    (133.45, 34.18, .10, .07), (133.70, 34.20, .09, .06),
+    (133.95, 34.23, .08, .06), (134.15, 34.28, .08, .05),
+    (134.35, 34.32, .07, .05), (134.55, 34.40, .07, .05),
+    (132.10, 34.15, .08, .06), (132.30, 34.22, .07, .05),
+    (131.90, 34.12, .06, .05), (131.65, 34.10, .07, .05),
+    (131.40, 34.08, .06, .04), (131.15, 34.05, .05, .04),
+    (133.00, 34.32, .07, .05), (133.35, 34.34, .06, .04),
+    (133.75, 34.35, .06, .04), (134.05, 34.38, .05, .04),
+    (134.45, 34.47, .06, .04), (134.65, 34.55, .05, .04),
+    (132.75, 33.98, .06, .04), (133.10, 33.98, .06, .04),
+    (133.45, 33.95, .06, .04), (133.80, 33.96, .05, .04),
+    (134.05, 33.98, .05, .04), (134.30, 34.02, .05, .04),
+    # Ise Bay and Pacific-side islands; offshore features kept compact.
+    (136.82, 34.65, .05, .04), (136.95, 34.80, .05, .04),
+    (136.65, 34.40, .04, .03), (135.30, 34.25, .04, .03),
+    (131.00, 34.20, .05, .04), (130.60, 34.10, .04, .03),
+]
+
+def in_polygon(lon, lat, polygon):
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if (yi > lat) != (yj > lat):
+            crossing_x = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < crossing_x:
+                inside = not inside
+        j = i
+    return inside
+
+def is_land(lon, lat):
+    if any(in_polygon(lon, lat, poly) for poly in LAND):
+        return True
+    for cx, cy, rx, ry in ISLANDS:
+        if ((lon - cx) / rx) ** 2 + ((lat - cy) / ry) ** 2 <= 1:
+            return True
+    return False
+
+# Endpoints are exact; spacing is 8/252 longitude and 2/63 latitude.
+longitudes = [129.0 + 8.0 * col / 252 for col in range(253)]
+latitudes = [35.0 - 2.0 * row / 63 for row in range(64)]
+matrix = np.array(
+    [[int(is_land(lon, lat)) for lon in longitudes] for lat in latitudes],
+    dtype=np.uint8,
+)
+
+out = Path("outputs")
+out.mkdir(parents=True, exist_ok=True)
+
+with (out / "candidate.csv").open("w", newline="", encoding="ascii") as f:
+    csv.writer(f, lineterminator="\n").writerows(matrix.tolist())
+
+# Pillow mode 1 uses 0=black and 255=white; land is white.
+image = Image.fromarray(matrix * 255, mode="L").convert("1")
+image.save(out / "candidate.png")
+image.resize((2024, 512), resample=Image.Resampling.NEAREST).save(
+    out / "candidate_8x.png"
+)
+```

@@ -1,0 +1,249 @@
+{
+  "generated_at": "2026-10-28T17:58:08+08:00",
+  "seed": 20261028,
+  "manifests": [
+    {
+      "path": "[local-path]",
+      "effort": "high",
+      "run_count": 4,
+      "generated_at": "2026-10-28T17:12:40+08:00"
+    },
+    {
+      "path": "[local-path]",
+      "effort": "high",
+      "run_count": 6,
+      "generated_at": "2026-10-28T17:48:02+08:00"
+    },
+    {
+      "path": "[local-path]",
+      "effort": "low",
+      "run_count": 12,
+      "generated_at": "2026-10-28T17:43:35+08:00"
+    },
+    {
+      "path": "[local-path]",
+      "effort": "low",
+      "run_count": 4,
+      "generated_at": "2026-10-28T17:11:31+08:00"
+    },
+    {
+      "path": "[local-path]",
+      "effort": "medium",
+      "run_count": 3,
+      "generated_at": "2026-10-28T16:55:41+08:00"
+    },
+    {
+      "path": "[local-path]",
+      "effort": "medium",
+      "run_count": 3,
+      "generated_at": "2026-10-28T16:54:00+08:00"
+    }
+  ],
+  "data": {
+    "planned_model_runs": 24,
+    "archived_attempt_records": 20,
+    "valid_runs": 15,
+    "complete_triplets": 1,
+    "inference_status": "completed",
+    "valid_by_arm": {
+      "high": 7,
+      "medium": 3,
+      "low": 5
+    },
+    "attempts_by_arm": {
+      "high": 8,
+      "medium": 4,
+      "low": 8
+    },
+    "status_by_arm": {
+      "high": {
+        "ok": 7,
+        "failed": 1
+      },
+      "medium": {
+        "ok": 3,
+        "partial": 1
+      },
+      "low": {
+        "ok": 5,
+        "partial": 3
+      }
+    }
+  },
+  "primary_low_minus_high": [
+    {
+      "metric": "accuracy",
+      "metric_label": "准确率",
+      "contrast": "low_minus_high",
+      "n_pairs": 5,
+      "mean_delta": -0.08357733400000003,
+      "median_delta": -0.10267221000000004,
+      "sd_delta": 0.07667821933013494,
+      "ci95_low": -0.13898682600000004,
+      "ci95_high": -0.01782361800000003,
+      "cohens_dz": -1.0899748941764185,
+      "dz_ci95_low": -4.829577399614222,
+      "dz_ci95_high": -0.322984816462175,
+      "n_negative": 4,
+      "share_negative": 0.8,
+      "p_one_sided_negative": 0.0625,
+      "p_method": "exact(32)",
+      "p_holm": 0.25
+    },
+    {
+      "metric": "hss",
+      "metric_label": "HSS",
+      "contrast": "low_minus_high",
+      "n_pairs": 5,
+      "mean_delta": -0.169784,
+      "median_delta": -0.186734,
+      "sd_delta": 0.15420236627075473,
+      "ci95_low": -0.28631439999999997,
+      "ci95_high": -0.04140699999999999,
+      "cohens_dz": -1.1010466577528804,
+      "dz_ci95_low": -4.093676681421381,
+      "dz_ci95_high": -0.3593519943959218,
+      "n_negative": 4,
+      "share_negative": 0.8,
+      "p_one_sided_negative": 0.0625,
+      "p_method": "exact(32)",
+      "p_holm": 0.25
+    },
+    {
+      "metric": "boundary_f1",
+      "metric_label": "边界F1@1",
+      "contrast": "low_minus_high",
+      "n_pairs": 5,
+      "mean_delta": -0.04944520000000001,
+      "median_delta": -0.04020699999999999,
+      "sd_delta": 0.04877955587846203,
+      "ci95_low": -0.08741640000000002,
+      "ci95_high": -0.012437400000000015,
+      "cohens_dz": -1.013645965190755,
+      "dz_ci95_low": -3.349978515550688,
+      "dz_ci95_high": -0.26082070693118975,
+      "n_negative": 4,
+      "share_negative": 0.8,
+      "p_one_sided_negative": 0.0625,
+      "p_method": "exact(32)",
+      "p_holm": 0.25
+    },
+    {
+      "metric": "narrow_water_keep",
+      "metric_label": "近陆窄水保留率",
+      "contrast": "low_minus_high",
+      "n_pairs": 5,
+      "mean_delta": -0.04011539999999998,
+      "median_delta": -0.090909,
+      "sd_delta": 0.4256369044447391,
+      "ci95_low": -0.3636366,
+      "ci95_high": 0.28354979999999996,
+      "cohens_dz": -0.09424793663588023,
+      "dz_ci95_low": -1.6604132630077673,
+      "dz_ci95_high": 1.2414448085371421,
+      "n_negative": 3,
+      "share_negative": 0.6,
+      "p_one_sided_negative": 0.4375,
+      "p_method": "exact(32)",
+      "p_holm": 0.4375
+    }
+  ],
+  "trends": [
+    {
+      "metric": "accuracy",
+      "metric_label": "准确率",
+      "n_complete_triplets": 1,
+      "mean_slope_per_d": -0.05133610500000002,
+      "slope_ci95_low": -0.05133610500000002,
+      "slope_ci95_high": -0.05133610500000002,
+      "n_negative_slope": 1,
+      "share_negative_slope": 1.0,
+      "p_one_sided_negative": 0.5,
+      "p_method": "exact(2)"
+    },
+    {
+      "metric": "hss",
+      "metric_label": "HSS",
+      "n_complete_triplets": 1,
+      "mean_slope_per_d": -0.093367,
+      "slope_ci95_low": -0.093367,
+      "slope_ci95_high": -0.093367,
+      "n_negative_slope": 1,
+      "share_negative_slope": 1.0,
+      "p_one_sided_negative": 0.5,
+      "p_method": "exact(2)"
+    },
+    {
+      "metric": "boundary_f1",
+      "metric_label": "边界F1@1",
+      "n_complete_triplets": 1,
+      "mean_slope_per_d": -0.043040999999999996,
+      "slope_ci95_low": -0.043040999999999996,
+      "slope_ci95_high": -0.043040999999999996,
+      "n_negative_slope": 1,
+      "share_negative_slope": 1.0,
+      "p_one_sided_negative": 0.5,
+      "p_method": "exact(2)"
+    },
+    {
+      "metric": "narrow_water_keep",
+      "metric_label": "近陆窄水保留率",
+      "n_complete_triplets": 1,
+      "mean_slope_per_d": 0.23412700000000003,
+      "slope_ci95_low": 0.23412700000000003,
+      "slope_ci95_high": 0.23412700000000003,
+      "n_negative_slope": 0,
+      "share_negative_slope": 0.0,
+      "p_one_sided_negative": 1.0,
+      "p_method": "exact(2)"
+    },
+    {
+      "metric": "island_iou_median",
+      "metric_label": "岛屿IoU中位数",
+      "n_complete_triplets": 1,
+      "mean_slope_per_d": -0.008945,
+      "slope_ci95_low": -0.008945,
+      "slope_ci95_high": -0.008945,
+      "n_negative_slope": 1,
+      "share_negative_slope": 1.0,
+      "p_one_sided_negative": 0.5,
+      "p_method": "exact(2)"
+    },
+    {
+      "metric": "island_iou_area_weighted",
+      "metric_label": "岛屿IoU面积加权",
+      "n_complete_triplets": 1,
+      "mean_slope_per_d": -0.05579099999999998,
+      "slope_ci95_low": -0.05579099999999998,
+      "slope_ci95_high": -0.05579099999999998,
+      "n_negative_slope": 1,
+      "share_negative_slope": 1.0,
+      "p_one_sided_negative": 0.5,
+      "p_method": "exact(2)"
+    },
+    {
+      "metric": "island_iou_ge50",
+      "metric_label": "岛屿IoU≥0.5比例",
+      "n_complete_triplets": 1,
+      "mean_slope_per_d": 0.0,
+      "slope_ci95_low": 0.0,
+      "slope_ci95_high": 0.0,
+      "n_negative_slope": 0,
+      "share_negative_slope": 0.0,
+      "p_one_sided_negative": 1.0,
+      "p_method": "exact(2)"
+    },
+    {
+      "metric": "component_recall",
+      "metric_label": "分量召回率",
+      "n_complete_triplets": 1,
+      "mean_slope_per_d": 0.0,
+      "slope_ci95_low": 0.0,
+      "slope_ci95_high": 0.0,
+      "n_negative_slope": 0,
+      "share_negative_slope": 0.0,
+      "p_one_sided_negative": 1.0,
+      "p_method": "exact(2)"
+    }
+  ]
+}

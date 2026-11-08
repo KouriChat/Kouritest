@@ -1,0 +1,83 @@
+{
+  "run_id": "20261025-213703_gpt-6.1-sol_seto_g5_73079529",
+  "channel": "B",
+  "batch_id": "batch-08",
+  "started_at": "2026-10-25T21:37:03+08:00",
+  "finished_at": "2026-10-25T21:48:12+08:00",
+  "duration_sec": 668.9,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": 0,
+  "model": "gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "seto",
+  "task_label": "濑户内海 2/63°",
+  "group": 5,
+  "prompt_sha256": "551d6fb3df8fe61af981ea454ba6fed3f898405e2c81a6cf0981578386d8f3c1",
+  "error": "",
+  "score": {
+    "errors": 702,
+    "correct": 15490,
+    "score": 15490,
+    "max_score": 16192,
+    "cells": 16192,
+    "accuracy_pct": 95.66452569169961,
+    "normalized": 15497.653162055336,
+    "extra_land": 307,
+    "missing_land": 395,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 43.99703557312253,
+    "flip_horizontal_accuracy": 43.416501976284586
+  },
+  "map_metrics": {
+    "accuracy_pct": 95.664526,
+    "hss": 0.912778,
+    "boundary_f1_d0": 0.73389,
+    "boundary_f1_d1": 0.941345,
+    "boundary_f1_d2": 0.975856,
+    "narrow_water_keep": 0.727273,
+    "narrow_water_cells": 22,
+    "island_iou_median": 0.296077,
+    "island_iou_area_weighted": 0.66684,
+    "island_iou_ge50": 0.375,
+    "component_recall": 0.5,
+    "n_ref_components": 24,
+    "n_pred_components": 38,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {
+    "candidate.png": "runs/20261025-213703_gpt-6.1-sol_seto_g5_73079529/candidate.png",
+    "candidate_8x.png": "runs/20261025-213703_gpt-6.1-sol_seto_g5_73079529/candidate_8x.png",
+    "candidate.csv": "runs/20261025-213703_gpt-6.1-sol_seto_g5_73079529/candidate.csv",
+    "diff.png": "runs/20261025-213703_gpt-6.1-sol_seto_g5_73079529/diff.png",
+    "script.py": "runs/20261025-213703_gpt-6.1-sol_seto_g5_73079529/script.py"
+  }
+}

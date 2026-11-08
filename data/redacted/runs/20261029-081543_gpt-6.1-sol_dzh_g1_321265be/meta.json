@@ -1,0 +1,31 @@
+{
+  "run_id": "20261029-081543_gpt-6.1-sol_dzh_g1_321265be",
+  "channel": "OR",
+  "batch_id": "batch-15",
+  "started_at": "2026-10-29T08:15:43+08:00",
+  "finished_at": "2026-10-29T08:18:11+08:00",
+  "duration_sec": 148.2,
+  "status": "failed",
+  "returncode": 402,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": 0,
+  "model": "openai/gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "dzh",
+  "task_label": "地中海 0.2°",
+  "group": 1,
+  "prompt_sha256": "ed60d2d0403da116ee920e35b57d8eca0509572e4331d15e0459b831ea2f9894",
+  "error": "HTTPError 402: Payment Required",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261029-081543_gpt-6.1-sol_dzh_g1_321265be/script.py",
+    "response_error.txt": "runs/20261029-081543_gpt-6.1-sol_dzh_g1_321265be/response_error.txt"
+  }
+}

@@ -1,0 +1,363 @@
+下面脚本仅使用手写的近似海岸线与岛屿多边形规则，不联网、不读取外部地图数据。运行后会在当前目录创建 `outputs/`，生成 CSV、原始 PNG 和最近邻放大 PNG。
+
+```python
+from pathlib import Path
+import math
+import numpy as np
+from PIL import Image
+
+
+WIDTH = 253
+HEIGHT = 64
+LON_MIN = 129.0
+LON_MAX = 137.0
+LAT_MAX = 35.0
+LAT_MIN = 33.0
+STEP = 2.0 / 63.0
+
+
+def polygon(points):
+    return [(float(x), float(y)) for x, y in points]
+
+
+def ellipse(cx, cy, rx, ry, count=20, phase=0.0):
+    pts = []
+    for i in range(count):
+        a = phase + 2.0 * math.pi * i / count
+        pts.append((cx + rx * math.cos(a), cy + ry * math.sin(a)))
+    return pts
+
+
+def inside(x, y, points):
+    """Ray-crossing point-in-polygon test."""
+    result = False
+    j = len(points) - 1
+
+    for i in range(len(points)):
+        xi, yi = points[i]
+        xj, yj = points[j]
+
+        crosses = ((yi > y) != (yj > y))
+        if crosses:
+            at_x = (xj - xi) * (y - yi) / (yj - yi) + xi
+            if x < at_x:
+                result = not result
+
+        j = i
+
+    return result
+
+
+# The polygons below are intentionally hand-written approximations.
+# Coordinates are longitude, latitude. They are not loaded from any source.
+land_polygons = []
+
+
+# Southern Chugoku and the main Honshu block.
+land_polygons.append(polygon([
+    (130.80, 34.08),
+    (131.10, 34.00),
+    (131.48, 34.04),
+    (131.85, 34.12),
+    (132.20, 34.22),
+    (132.58, 34.32),
+    (132.96, 34.46),
+    (133.38, 34.57),
+    (133.78, 34.66),
+    (134.18, 34.72),
+    (134.57, 34.76),
+    (134.88, 34.75),
+    (135.12, 34.70),
+    (135.38, 34.78),
+    (135.70, 34.87),
+    (136.04, 34.95),
+    (136.35, 35.00),
+    (137.00, 35.00),
+    (137.00, 35.02),
+    (130.80, 35.02),
+]))
+
+
+# Kii Peninsula, south of Osaka Bay and west of the Pacific coast.
+land_polygons.append(polygon([
+    (134.98, 34.31),
+    (135.16, 34.23),
+    (135.30, 34.08),
+    (135.37, 33.82),
+    (135.54, 33.50),
+    (135.78, 33.28),
+    (136.08, 33.12),
+    (136.32, 33.00),
+    (136.72, 33.00),
+    (136.76, 33.35),
+    (136.82, 33.72),
+    (136.82, 34.08),
+    (136.78, 34.43),
+    (136.63, 34.68),
+    (136.45, 34.77),
+    (136.22, 34.85),
+    (135.90, 34.84),
+    (135.60, 34.72),
+    (135.38, 34.56),
+    (135.18, 34.43),
+]))
+
+
+# Northeastern Kyushu within the requested frame.
+land_polygons.append(polygon([
+    (129.56, 33.00),
+    (129.62, 33.23),
+    (129.78, 33.48),
+    (130.02, 33.64),
+    (130.35, 33.69),
+    (130.66, 33.60),
+    (130.91, 33.47),
+    (131.18, 33.35),
+    (131.48, 33.24),
+    (131.70, 33.10),
+    (131.82, 33.00),
+]))
+
+
+# Shikoku.
+land_polygons.append(polygon([
+    (131.98, 33.84),
+    (132.28, 33.90),
+    (132.62, 33.93),
+    (132.88, 34.05),
+    (133.20, 34.28),
+    (133.58, 34.38),
+    (133.98, 34.42),
+    (134.38, 34.36),
+    (134.70, 34.27),
+    (134.94, 34.16),
+    (135.02, 34.00),
+    (134.91, 33.74),
+    (134.65, 33.50),
+    (134.27, 33.27),
+    (133.85, 33.10),
+    (133.43, 33.02),
+    (132.95, 33.00),
+    (132.50, 33.05),
+    (132.17, 33.18),
+    (132.00, 33.42),
+]))
+
+
+# Chita Peninsula and the western side of the mouth of Ise Bay.
+land_polygons.append(polygon([
+    (136.72, 35.02),
+    (137.02, 35.02),
+    (137.02, 34.65),
+    (136.95, 34.48),
+    (136.78, 34.58),
+    (136.68, 34.80),
+]))
+
+
+# Atsumi Peninsula at the eastern edge of Ise Bay.
+land_polygons.append(polygon([
+    (136.63, 34.72),
+    (136.98, 34.72),
+    (137.02, 34.58),
+    (137.02, 34.34),
+    (136.88, 34.36),
+    (136.70, 34.52),
+]))
+
+
+# Tsushima.
+land_polygons.append(polygon([
+    (129.08, 34.72),
+    (129.27, 34.82),
+    (129.48, 34.70),
+    (129.57, 34.48),
+    (129.51, 34.23),
+    (129.38, 34.04),
+    (129.18, 34.08),
+    (129.05, 34.32),
+]))
+
+
+# Iki.
+land_polygons.append(polygon([
+    (129.55, 33.88),
+    (129.70, 33.94),
+    (129.86, 33.86),
+    (129.91, 33.70),
+    (129.80, 33.58),
+    (129.62, 33.60),
+    (129.53, 33.73),
+]))
+
+
+# Large islands around the western Seto Inland Sea.
+land_polygons.append(polygon([
+    (131.92, 34.00),
+    (132.13, 34.05),
+    (132.31, 33.98),
+    (132.38, 33.78),
+    (132.25, 33.63),
+    (132.05, 33.68),
+    (131.91, 33.82),
+]))
+
+land_polygons.append(ellipse(132.35, 33.92, 0.15, 0.09, 18))
+land_polygons.append(ellipse(131.70, 33.73, 0.12, 0.06, 16))
+
+# Hiroshima Bay and Geiyo islands.
+land_polygons.append(ellipse(132.30, 34.29, 0.13, 0.18, 20))
+land_polygons.append(ellipse(132.45, 34.18, 0.16, 0.13, 20))
+land_polygons.append(ellipse(132.60, 34.12, 0.17, 0.10, 18))
+land_polygons.append(ellipse(132.70, 34.22, 0.11, 0.08, 16))
+land_polygons.append(ellipse(132.80, 34.30, 0.09, 0.07, 16))
+land_polygons.append(ellipse(132.91, 34.20, 0.13, 0.10, 18))
+land_polygons.append(ellipse(133.00, 34.28, 0.16, 0.12, 20))
+land_polygons.append(ellipse(133.12, 34.33, 0.14, 0.13, 20))
+land_polygons.append(ellipse(133.25, 34.31, 0.12, 0.10, 18))
+land_polygons.append(ellipse(133.05, 34.15, 0.10, 0.07, 16))
+land_polygons.append(ellipse(133.22, 34.13, 0.08, 0.06, 16))
+
+# Islands north of Shikoku and around Kagawa.
+land_polygons.append(polygon([
+    (133.72, 34.52),
+    (133.96, 34.57),
+    (134.20, 34.53),
+    (134.34, 34.43),
+    (134.22, 34.34),
+    (133.94, 34.35),
+    (133.73, 34.42),
+]))
+
+land_polygons.append(ellipse(133.79, 34.38, 0.11, 0.08, 16))
+land_polygons.append(ellipse(133.93, 34.43, 0.10, 0.07, 16))
+land_polygons.append(ellipse(134.08, 34.49, 0.10, 0.07, 16))
+land_polygons.append(ellipse(134.15, 34.37, 0.08, 0.06, 16))
+land_polygons.append(ellipse(134.34, 34.40, 0.10, 0.07, 16))
+land_polygons.append(ellipse(134.48, 34.38, 0.07, 0.05, 14))
+land_polygons.append(ellipse(134.62, 34.32, 0.08, 0.06, 14))
+
+# Smaller islands between Honshu and Shikoku.
+land_polygons.append(ellipse(133.38, 34.31, 0.09, 0.06, 16))
+land_polygons.append(ellipse(133.52, 34.26, 0.08, 0.06, 16))
+land_polygons.append(ellipse(133.66, 34.23, 0.07, 0.05, 14))
+land_polygons.append(ellipse(133.84, 34.23, 0.07, 0.05, 14))
+land_polygons.append(ellipse(134.04, 34.24, 0.08, 0.05, 14))
+land_polygons.append(ellipse(134.23, 34.22, 0.07, 0.05, 14))
+
+# Awaji Island.
+land_polygons.append(polygon([
+    (134.66, 34.70),
+    (134.86, 34.68),
+    (135.06, 34.52),
+    (135.15, 34.31),
+    (135.10, 34.09),
+    (134.96, 33.98),
+    (134.76, 34.08),
+    (134.63, 34.29),
+    (134.56, 34.52),
+]))
+
+# Islands in Osaka Bay and the Kii Channel.
+land_polygons.append(ellipse(135.22, 34.42, 0.06, 0.05, 14))
+land_polygons.append(ellipse(135.34, 34.32, 0.06, 0.04, 14))
+land_polygons.append(ellipse(135.55, 34.28, 0.07, 0.05, 14))
+land_polygons.append(ellipse(135.72, 34.20, 0.06, 0.05, 14))
+
+# A few islands along the southern and eastern Shikoku coast.
+land_polygons.append(ellipse(132.10, 33.58, 0.08, 0.05, 14))
+land_polygons.append(ellipse(132.44, 33.54, 0.08, 0.05, 14))
+land_polygons.append(ellipse(132.76, 33.49, 0.08, 0.05, 14))
+land_polygons.append(ellipse(134.55, 33.86, 0.07, 0.05, 14))
+land_polygons.append(ellipse(134.72, 33.72, 0.06, 0.04, 14))
+
+
+def classify(lon, lat):
+    for shape in land_polygons:
+        if inside(lon, lat, shape):
+            return 1
+    return 0
+
+
+def build_matrix():
+    matrix = np.zeros((HEIGHT, WIDTH), dtype=np.uint8)
+
+    for row in range(HEIGHT):
+        lat = LAT_MAX - row * STEP
+        for col in range(WIDTH):
+            lon = LON_MIN + col * STEP
+            matrix[row, col] = classify(lon, lat)
+
+    return matrix
+
+
+def write_outputs(matrix):
+    out_dir = Path("outputs")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = out_dir / "candidate.csv"
+    png_path = out_dir / "candidate.png"
+    enlarged_path = out_dir / "candidate_8x.png"
+
+    np.savetxt(csv_path, matrix, fmt="%d", delimiter=",")
+
+    # Land is white and water is black.
+    pixels = (matrix * 255).astype(np.uint8)
+    original = Image.fromarray(pixels)
+    original.save(png_path)
+
+    enlarged = original.resize(
+        (WIDTH * 8, HEIGHT * 8),
+        resample=Image.Resampling.NEAREST,
+    )
+    enlarged.save(enlarged_path)
+
+    return csv_path, png_path, enlarged_path
+
+
+def validate(matrix, paths):
+    assert matrix.shape == (64, 253)
+    assert matrix.size == 16192
+    assert set(np.unique(matrix).tolist()).issubset({0, 1})
+
+    csv_path, png_path, enlarged_path = paths
+
+    rows = csv_path.read_text(encoding="utf-8").splitlines()
+    assert len(rows) == 64
+    for row in rows:
+        values = row.split(",")
+        assert len(values) == 253
+        assert all(value in {"0", "1"} for value in values)
+
+    original = Image.open(png_path).convert("L")
+    enlarged = Image.open(enlarged_path).convert("L")
+
+    assert original.size == (253, 64)
+    assert enlarged.size == (2024, 512)
+
+    assert set(original.getdata()).issubset({0, 255})
+    assert set(enlarged.getdata()).issubset({0, 255})
+
+    original_array = np.asarray(original)
+    enlarged_array = np.asarray(enlarged)
+
+    expected = np.repeat(np.repeat(original_array, 8, axis=0), 8, axis=1)
+    assert np.array_equal(enlarged_array, expected)
+
+
+def main():
+    matrix = build_matrix()
+    paths = write_outputs(matrix)
+    validate(matrix, paths)
+
+    print("matrix:", matrix.shape, "valid values:", matrix.size)
+    print("csv:", paths[0])
+    print("png:", paths[1], Image.open(paths[1]).size)
+    print("png_8x:", paths[2], Image.open(paths[2]).size)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+运行依赖：Python 3、`numpy`、`Pillow`。生成结果分别为 `outputs/candidate.csv`、`outputs/candidate.png` 和 `outputs/candidate_8x.png`。

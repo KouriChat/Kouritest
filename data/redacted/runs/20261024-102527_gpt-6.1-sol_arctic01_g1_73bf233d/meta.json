@@ -1,0 +1,32 @@
+{
+  "run_id": "20261024-102527_gpt-6.1-sol_arctic01_g1_73bf233d",
+  "channel": "OR",
+  "batch_id": "batch-04",
+  "started_at": "2026-10-24T10:25:27+08:00",
+  "finished_at": "2026-10-24T10:33:05+08:00",
+  "duration_sec": 458.3,
+  "status": "failed",
+  "returncode": 403,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": null,
+  "model": "openai/gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "arctic01",
+  "task_label": "北极航道 0.1°",
+  "group": 1,
+  "prompt_sha256": "205d51ed38107ba41e78ddad7dfa494a67a168460679facc9216349cc5498684",
+  "error": "HTTPError 403: Forbidden",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261024-102527_gpt-6.1-sol_arctic01_g1_73bf233d/script.py",
+    "last_message.txt": "runs/20261024-102527_gpt-6.1-sol_arctic01_g1_73bf233d/last_message.txt",
+    "response_error.txt": "runs/20261024-102527_gpt-6.1-sol_arctic01_g1_73bf233d/response_error.txt"
+  }
+}

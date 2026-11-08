@@ -1,0 +1,11 @@
+archive,target_cells,attempts,ok,partial,failed,interrupted,excluded,complete_cells,raw_ok_rate
+lowhigh_6map_S1_H,12,53,14,0,38,1,2,12,0.2641509433962264
+lowhigh_6map_S1_Hsham,12,30,12,1,17,0,0,12,0.4
+lowhigh_6map_S1_L,12,37,12,1,24,0,0,12,0.32432432432432434
+lowhigh_6map_S2_H,12,17,12,1,3,1,0,12,0.7058823529411765
+lowhigh_6map_S2_Hsham,12,13,12,0,1,0,0,12,0.9230769230769231
+lowhigh_6map_S2_L,12,23,12,11,0,0,0,12,0.5217391304347826
+lowhigh_backfill_S1_H,4,23,4,1,18,0,0,4,0.17391304347826086
+lowhigh_backfill_S1_L,4,14,4,2,8,0,0,4,0.2857142857142857
+lowhigh_backfill_S2_H,4,5,4,1,0,0,0,4,0.8
+lowhigh_backfill_S2_L,4,4,4,0,0,0,0,4,1.0

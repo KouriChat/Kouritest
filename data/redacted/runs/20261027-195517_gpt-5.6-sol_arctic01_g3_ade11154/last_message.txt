@@ -1,0 +1,213 @@
+以下脚本用手写的近似海岸线多边形判断每个采样点是否落在陆地上；矩阵由这些规则自动计算，并非逐点独立推理。当前环境按要求未调用工具或生成文件，因此无法在此直接展示运行后的图片。运行脚本需要 `numpy` 和 `Pillow`。
+
+```python
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+
+# 手写近似海岸线，坐标为 (经度, 纬度)，经度采用西经负值。
+# 不包含外部地图、数据库查询或下载。
+LAND_POLYGONS = [
+    # Victoria Island，东岸及东南部
+    [
+        (-113.0, 73.0), (-112.0, 73.7), (-110.5, 74.3),
+        (-108.5, 74.6), (-106.8, 74.4), (-105.3, 73.9),
+        (-104.7, 73.3), (-105.1, 72.7), (-106.3, 72.5),
+        (-108.0, 72.7), (-110.0, 72.5), (-112.0, 72.7),
+    ],
+    # Prince of Wales Island
+    [
+        (-103.0, 72.8), (-102.8, 73.5), (-102.1, 74.1),
+        (-101.5, 74.8), (-100.7, 75.2), (-99.5, 75.1),
+        (-98.6, 74.7), (-98.2, 74.0), (-98.5, 73.3),
+        (-99.0, 72.7), (-100.0, 72.4), (-101.2, 72.4),
+        (-102.2, 72.5),
+    ],
+    # Somerset Island
+    [
+        (-96.4, 72.6), (-96.1, 73.2), (-96.0, 74.0),
+        (-95.6, 74.7), (-94.9, 75.0), (-94.0, 74.8),
+        (-93.6, 74.2), (-93.8, 73.6), (-94.1, 73.0),
+        (-94.6, 72.6), (-95.5, 72.4),
+    ],
+    # Boothia Peninsula, cropped by the southern frame
+    [
+        (-97.0, 73.0), (-96.3, 73.4), (-95.6, 73.6),
+        (-94.8, 73.3), (-94.2, 72.8), (-93.5, 72.5),
+        (-93.0, 72.0), (-93.0, 70.0), (-97.0, 70.0),
+    ],
+    # Melville Island
+    [
+        (-113.0, 75.4), (-112.0, 75.9), (-111.5, 76.5),
+        (-110.4, 76.9), (-108.8, 76.9), (-107.8, 76.5),
+        (-106.4, 76.4), (-105.5, 75.9), (-106.0, 75.4),
+        (-107.5, 75.2), (-109.0, 75.3), (-110.4, 75.0),
+        (-112.0, 75.1),
+    ],
+    # Bathurst Island
+    [
+        (-102.8, 75.3), (-102.5, 75.9), (-102.0, 76.5),
+        (-101.5, 77.2), (-100.5, 77.5), (-99.4, 77.3),
+        (-98.6, 76.9), (-98.2, 76.3), (-98.5, 75.8),
+        (-99.2, 75.5), (-100.2, 75.3), (-101.3, 75.1),
+    ],
+    # Cornwallis Island
+    [
+        (-96.2, 74.8), (-95.8, 75.1), (-95.0, 75.2),
+        (-94.4, 75.0), (-94.3, 74.7), (-94.8, 74.5),
+        (-95.6, 74.5), (-96.1, 74.6),
+    ],
+    # Devon Island
+    [
+        (-90.0, 74.5), (-89.5, 75.0), (-88.8, 75.7),
+        (-88.0, 76.3), (-86.8, 76.9), (-85.5, 77.2),
+        (-84.0, 77.0), (-82.8, 76.7), (-81.5, 76.3),
+        (-80.5, 75.9), (-80.2, 75.3), (-81.0, 74.8),
+        (-82.2, 74.6), (-84.0, 74.5), (-86.0, 74.4),
+        (-88.0, 74.3),
+    ],
+    # Ellesmere Island, southern portion
+    [
+        (-82.0, 76.0), (-81.0, 76.5), (-80.0, 77.0),
+        (-79.0, 77.7), (-78.0, 78.5), (-77.0, 79.2),
+        (-75.0, 79.8), (-73.0, 80.0), (-70.0, 80.0),
+        (-70.0, 73.0), (-81.0, 73.0), (-81.8, 74.0),
+    ],
+    # Axel Heiberg Island
+    [
+        (-91.5, 77.0), (-90.8, 77.7), (-89.8, 78.4),
+        (-88.5, 79.0), (-87.0, 79.5), (-85.8, 79.3),
+        (-84.9, 78.8), (-85.5, 78.2), (-86.5, 77.7),
+        (-87.6, 77.3), (-89.0, 77.0), (-90.5, 76.8),
+    ],
+    # Ellef Ringnes Island
+    [
+        (-100.0, 77.0), (-99.2, 77.5), (-98.5, 78.2),
+        (-97.5, 78.7), (-96.2, 78.8), (-95.0, 78.4),
+        (-94.2, 77.9), (-94.5, 77.4), (-95.5, 77.1),
+        (-97.0, 76.9), (-98.5, 76.8),
+    ],
+    # Amund Ringnes Island
+    [
+        (-98.5, 78.5), (-98.0, 79.0), (-97.0, 79.5),
+        (-95.8, 79.7), (-94.8, 79.3), (-94.5, 78.8),
+        (-95.2, 78.4), (-96.4, 78.2), (-97.5, 78.2),
+    ],
+    # Mackenzie King Island
+    [
+        (-112.0, 77.3), (-111.3, 77.8), (-110.3, 78.1),
+        (-109.4, 77.9), (-109.2, 77.4), (-110.0, 77.1),
+        (-111.0, 77.0),
+    ],
+    # Borden Island
+    [
+        (-112.0, 78.0), (-111.5, 78.6), (-110.5, 79.0),
+        (-109.3, 79.0), (-108.7, 78.5), (-109.4, 78.1),
+        (-110.6, 77.9),
+    ],
+    # Lougheed Island
+    [
+        (-108.0, 78.0), (-107.5, 78.6), (-106.5, 78.8),
+        (-105.7, 78.4), (-106.0, 77.9), (-107.0, 77.7),
+    ],
+    # Smaller named islands and representative island groups
+    [
+        (-104.0, 76.8), (-103.5, 77.2), (-102.8, 77.3),
+        (-102.4, 76.9), (-102.8, 76.6), (-103.6, 76.6),
+    ],
+    [
+        (-103.5, 77.8), (-103.0, 78.2), (-102.2, 78.3),
+        (-101.8, 77.9), (-102.2, 77.6), (-103.0, 77.5),
+    ],
+    [
+        (-92.0, 75.4), (-91.6, 75.7), (-91.0, 75.7),
+        (-90.8, 75.4), (-91.2, 75.2), (-91.8, 75.2),
+    ],
+    # Western Baffin Island edge within the frame
+    [
+        (-81.0, 73.0), (-80.2, 73.0), (-80.2, 73.5),
+        (-80.5, 74.0), (-81.0, 74.3), (-81.2, 73.7),
+    ],
+]
+
+
+def point_in_polygon(lon, lat, polygon):
+    """Ray casting point test; boundary points are treated as land."""
+    inside = False
+    count = len(polygon)
+    for i in range(count):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % count]
+
+        cross = (lon - x1) * (y2 - y1) - (lat - y1) * (x2 - x1)
+        if (
+            abs(cross) < 1e-10
+            and min(x1, x2) - 1e-10 <= lon <= max(x1, x2) + 1e-10
+            and min(y1, y2) - 1e-10 <= lat <= max(y1, y2) + 1e-10
+        ):
+            return True
+
+        if (y1 > lat) != (y2 > lat):
+            crossing_lon = x1 + (lat - y1) * (x2 - x1) / (y2 - y1)
+            if lon < crossing_lon:
+                inside = not inside
+    return inside
+
+
+def main():
+    latitudes = np.round(np.arange(79.0, 72.9, -0.1), 1)
+    longitudes = np.round(np.arange(-105.0, -80.9, 0.1), 1)
+
+    matrix = np.zeros((len(latitudes), len(longitudes)), dtype=np.uint8)
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            matrix[row, col] = int(
+                any(point_in_polygon(lon, lat, polygon)
+                    for polygon in LAND_POLYGONS)
+            )
+
+    if matrix.shape != (61, 241):
+        raise RuntimeError(f"Unexpected matrix shape: {matrix.shape}")
+
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    with (output_dir / "candidate.csv").open("w", encoding="ascii", newline="") as f:
+        for row in matrix:
+            f.write(",".join(str(int(value)) for value in row) + "\n")
+
+    # RGB values are exactly black for water and white for land.
+    image = Image.fromarray(matrix * 255, mode="L").convert("RGB")
+    image.save(output_dir / "candidate.png")
+    image.resize((241 * 8, 61 * 8), resample=Image.Resampling.NEAREST).save(
+        output_dir / "candidate_8x.png"
+    )
+
+    values = np.asarray(image)
+    if values.shape != (61, 241, 3) or not np.isin(matrix, (0, 1)).all():
+        raise RuntimeError("Matrix or original image validation failed")
+    if set(map(tuple, np.unique(values.reshape(-1, 3), axis=0))) != {
+        (0, 0, 0), (255, 255, 255)
+    }:
+        raise RuntimeError("Original image contains unexpected colors")
+
+    enlarged = Image.open(output_dir / "candidate_8x.png")
+    if enlarged.size != (1928, 488):
+        raise RuntimeError(f"Unexpected enlarged image size: {enlarged.size}")
+
+    with (output_dir / "candidate.csv").open("r", encoding="ascii") as f:
+        rows = [line.rstrip("\n").split(",") for line in f]
+    if len(rows) != 61 or any(
+        len(row) != 241 or any(value not in ("0", "1") for value in row)
+        for row in rows
+    ):
+        raise RuntimeError("CSV validation failed")
+
+    print("Validated 61x241 matrix, CSV, 241x61 PNG, and 1928x488 nearest-neighbor PNG.")
+
+
+if __name__ == "__main__":
+    main()
+```

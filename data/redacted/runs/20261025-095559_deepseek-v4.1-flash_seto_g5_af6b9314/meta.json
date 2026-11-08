@@ -1,0 +1,77 @@
+{
+  "run_id": "20261025-095559_deepseek-v4.1-flash_seto_g5_af6b9314",
+  "channel": "A",
+  "batch_id": "batch-06",
+  "started_at": "2026-10-25T09:55:59+08:00",
+  "finished_at": "2026-10-25T09:59:57+08:00",
+  "duration_sec": 237.4,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 2,
+  "request_retries": 0,
+  "model": "deepseek-v4.1-flash",
+  "model_display": "DeepSeek V4.1 Flash",
+  "task": "seto",
+  "task_label": "濑户内海 2/63°",
+  "group": 5,
+  "prompt_sha256": "551d6fb3df8fe61af981ea454ba6fed3f898405e2c81a6cf0981578386d8f3c1",
+  "error": "",
+  "score": {
+    "errors": 1470,
+    "correct": 14722,
+    "score": 14722,
+    "max_score": 16192,
+    "cells": 16192,
+    "accuracy_pct": 90.92144268774703,
+    "normalized": 14729.27371541502,
+    "extra_land": 370,
+    "missing_land": 1100,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 43.92292490118577,
+    "flip_horizontal_accuracy": 42.62598814229249
+  },
+  "map_metrics": {
+    "accuracy_pct": 90.921443,
+    "hss": 0.81631,
+    "boundary_f1_d0": 0.470988,
+    "boundary_f1_d1": 0.734134,
+    "boundary_f1_d2": 0.866328,
+    "narrow_water_keep": 0.681818,
+    "narrow_water_cells": 22,
+    "island_iou_median": 0.320513,
+    "island_iou_area_weighted": 0.826896,
+    "island_iou_ge50": 0.333333,
+    "component_recall": 0.541667,
+    "n_ref_components": 24,
+    "n_pred_components": 34,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {}
+}

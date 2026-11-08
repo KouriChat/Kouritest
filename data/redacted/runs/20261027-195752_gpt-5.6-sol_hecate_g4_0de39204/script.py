@@ -1,0 +1,122 @@
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+SIZE = 127
+OUT = Path("outputs")
+
+# Hand-estimated shore vertices; x is west longitude, y is latitude.
+MAINLAND_SHORE = [
+    (130.46, 55.00), (130.55, 54.90), (130.66, 54.78),
+    (130.72, 54.66), (130.77, 54.52), (130.68, 54.38),
+    (130.58, 54.25), (130.50, 54.12), (130.43, 53.98),
+    (130.36, 53.84), (130.26, 53.70), (130.17, 53.56),
+    (130.05, 53.42), (129.96, 53.28), (129.86, 53.14),
+    (129.77, 53.00),
+]
+MAINLAND = MAINLAND_SHORE + [
+    (129.0, 53.0), (129.0, 55.0), (130.46, 55.0),
+]
+
+INLETS = [
+    [(130.50, 55.00), (130.67, 55.00), (130.63, 54.88),
+     (130.57, 54.78), (130.54, 54.69), (130.50, 54.78)],
+    [(130.65, 54.80), (130.78, 54.77), (130.84, 54.65),
+     (130.78, 54.54), (130.72, 54.63), (130.69, 54.72)],
+    [(130.66, 54.44), (130.77, 54.38), (130.80, 54.27),
+     (130.73, 54.20), (130.68, 54.30)],
+    [(130.47, 54.14), (130.59, 54.12), (130.64, 54.02),
+     (130.57, 53.94), (130.50, 54.03)],
+    [(130.20, 53.65), (130.31, 53.61), (130.36, 53.49),
+     (130.30, 53.41), (130.24, 53.50)],
+]
+ISLANDS = [
+    [(131.00, 54.18), (131.10, 54.21), (131.15, 54.13),
+     (131.12, 54.03), (131.07, 53.96), (131.01, 54.02)],
+    [(131.00, 54.38), (131.08, 54.39), (131.11, 54.31),
+     (131.07, 54.25), (131.01, 54.28)],
+    [(131.00, 53.73), (131.09, 53.77), (131.13, 53.68),
+     (131.10, 53.57), (131.06, 53.47), (131.01, 53.42)],
+    [(131.00, 53.22), (131.07, 53.26), (131.10, 53.17),
+     (131.07, 53.08), (131.01, 53.03)],
+    [(130.80, 54.88), (130.89, 54.90), (130.94, 54.84),
+     (130.90, 54.78), (130.82, 54.80)],
+    [(130.85, 54.55), (130.93, 54.58), (130.98, 54.51),
+     (130.94, 54.44), (130.87, 54.46)],
+    [(130.74, 54.22), (130.83, 54.25), (130.87, 54.18),
+     (130.83, 54.11), (130.76, 54.13)],
+    [(130.55, 53.88), (130.64, 53.90), (130.69, 53.83),
+     (130.65, 53.76), (130.57, 53.78)],
+    [(130.40, 53.53), (130.48, 53.56), (130.52, 53.49),
+     (130.49, 53.42), (130.42, 53.44)],
+]
+
+REEFS = [
+    (130.94, 54.70, 0.018, 0.025),
+    (130.88, 54.05, 0.015, 0.020),
+    (130.71, 53.66, 0.014, 0.020),
+    (130.57, 53.31, 0.014, 0.018),
+    (130.96, 53.88, 0.012, 0.018),
+]
+def inside_polygon(x, y, polygon):
+    """Odd-even point-in-polygon test."""
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if (yi > y) != (yj > y):
+            cross_x = (xj - xi) * (y - yi) / (yj - yi) + xi
+            if x < cross_x:
+                inside = not inside
+        j = i
+    return inside
+
+
+def make_matrix():
+    lats = np.linspace(55.0, 53.0, SIZE)
+    west_lons = np.linspace(131.0, 129.0, SIZE)
+    matrix = np.zeros((SIZE, SIZE), dtype=np.uint8)
+
+    for row, lat in enumerate(lats):
+        for col, west_lon in enumerate(west_lons):
+            land = inside_polygon(west_lon, lat, MAINLAND)
+            if land and any(inside_polygon(west_lon, lat, area)
+                            for area in INLETS):
+                land = False
+            if not land:
+                land = any(inside_polygon(west_lon, lat, island)
+                           for island in ISLANDS)
+            if not land:
+                for cx, cy, rx, ry in REEFS:
+                    if ((west_lon - cx) / rx) ** 2 + ((lat - cy) / ry) ** 2 <= 1:
+                        land = True
+                        break
+            matrix[row, col] = int(land)
+    return matrix
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    matrix = make_matrix()
+
+    with (OUT / "candidate.csv").open(
+        "w", encoding="ascii", newline=""
+    ) as f:
+        for row in matrix:
+            f.write(",".join(str(int(value)) for value in row) + "\n")
+
+    image = Image.fromarray(matrix * 255, mode="L")
+    image.save(OUT / "candidate.png")
+    image.resize(
+        (SIZE * 8, SIZE * 8), Image.Resampling.NEAREST
+    ).save(OUT / "candidate_8x.png")
+
+    assert matrix.shape == (127, 127)
+    assert matrix.size == 16129
+    assert set(np.unique(matrix)).issubset({0, 1})
+    assert image.size == (127, 127)
+    assert set(image.getdata()).issubset({0, 255})
+    assert Image.open(OUT / "candidate_8x.png").size == (1016, 1016)
+
+
+if __name__ == "__main__":
+    main()

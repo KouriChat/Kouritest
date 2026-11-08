@@ -1,0 +1,30 @@
+{
+  "run_id": "20261106-155758_gpt-6.1-sol_arctic01_g1_fd3f251d",
+  "channel": "A",
+  "batch_id": "batch-07",
+  "started_at": "2026-11-06T15:57:58+08:00",
+  "finished_at": "2026-11-06T16:02:58+08:00",
+  "duration_sec": 300.0,
+  "status": "failed",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": 0,
+  "model": "gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "arctic01",
+  "task_label": "北极航道 0.1°",
+  "group": 1,
+  "prompt_sha256": "205d51ed38107ba41e78ddad7dfa494a67a168460679facc9216349cc5498684",
+  "error": "RuntimeError: {\"type\": \"error\", \"sequence_number\": 0, \"code\": \"upstream_stream_read_error\", \"message\": \"Upstream response stream was interrupted\", \"param\": null}",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261106-155758_gpt-6.1-sol_arctic01_g1_fd3f251d/script.py"
+  }
+}

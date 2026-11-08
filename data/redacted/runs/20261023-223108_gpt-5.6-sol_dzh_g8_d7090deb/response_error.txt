@@ -1,0 +1,4 @@
+status=400
+url=[redacted-endpoint]
+reason=Bad Request
+body=

@@ -1,0 +1,30 @@
+{
+  "run_id": "20261024-162155_gpt-6-astra_global_g1_cbfc7ea0",
+  "channel": "OR",
+  "batch_id": "batch-02",
+  "started_at": "2026-10-24T16:21:55+08:00",
+  "finished_at": "2026-10-24T16:33:01+08:00",
+  "duration_sec": 665.9,
+  "status": "failed",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": 0,
+  "model": "openai/gpt-6-astra",
+  "model_display": "GPT 6 Astra",
+  "task": "global",
+  "task_label": "全球 2°",
+  "group": 1,
+  "prompt_sha256": "3b29f0597bf52e8706872573ef54a081c777de4a7d6ad8268514209bffa9dd12",
+  "error": "no candidate CSV/PNG found",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261024-162155_gpt-6-astra_global_g1_cbfc7ea0/script.py"
+  }
+}

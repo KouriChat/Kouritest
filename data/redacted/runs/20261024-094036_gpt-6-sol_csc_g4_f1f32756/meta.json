@@ -1,0 +1,31 @@
+{
+  "run_id": "20261024-094036_gpt-6-sol_csc_g4_f1f32756",
+  "channel": "OR",
+  "batch_id": "batch-03",
+  "started_at": "2026-10-24T09:40:36+08:00",
+  "finished_at": "2026-10-24T09:43:28+08:00",
+  "duration_sec": 171.5,
+  "status": "failed",
+  "returncode": 403,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": null,
+  "model": "openai/gpt-6-sol",
+  "model_display": "GPT 6 Sol",
+  "task": "csc",
+  "task_label": "南海 0.2°",
+  "group": 4,
+  "prompt_sha256": "fc65ca27be0c335304b30e9ae82817db140b00faa8ef3482c12bce3828360aea",
+  "error": "HTTPError 403: Forbidden",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261024-094036_gpt-6-sol_csc_g4_f1f32756/script.py",
+    "response_error.txt": "runs/20261024-094036_gpt-6-sol_csc_g4_f1f32756/response_error.txt"
+  }
+}

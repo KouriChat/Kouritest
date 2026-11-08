@@ -1,0 +1,1 @@
+apply_patch is writing empty files in this environment, so I'll write the script directly with PowerShell here-strings in chunks.

@@ -1,0 +1,5 @@
+status=502
+url=[redacted-endpoint]
+reason=Bad Gateway
+content-type=application/json; charset=utf-8
+body={"error":{"message":"Upstream service temporarily unavailable","type":"upstream_error"}}

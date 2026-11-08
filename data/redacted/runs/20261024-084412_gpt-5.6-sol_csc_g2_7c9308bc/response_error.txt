@@ -1,0 +1,4 @@
+status=403
+url=[redacted-endpoint]
+reason=Forbidden
+body=

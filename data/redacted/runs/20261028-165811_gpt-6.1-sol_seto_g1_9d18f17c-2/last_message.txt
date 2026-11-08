@@ -1,0 +1,123 @@
+我无法在本次回复中创建文件或运行脚本。以下提供完整、独立可运行的生成脚本；它只用手写的近似海岸线与岛屿规则分类，不读取外部地理数据，也不对采样点逐点独立推理。依赖：`numpy`、`Pillow`。运行后会在当前目录创建 `outputs/` 并写出 CSV 与两张 PNG。
+
+```python
+from pathlib import Path
+import csv
+import numpy as np
+from PIL import Image
+
+ROWS, COLS = 64, 253
+LAT_TOP, LON_LEFT = 35.0, 129.0
+STEP = 2.0 / 63.0
+
+# Approximate peninsula outlines, ordered around each polygon.
+# Coordinates are (longitude, latitude).
+LAND_POLYGONS = [
+    # Western Honshu: Kyushu-facing coast through the Seto Inland Sea coast.
+    [(130.75, 34.05), (131.00, 34.18), (131.35, 34.20), (131.65, 34.28),
+     (132.05, 34.25), (132.35, 34.35), (132.75, 34.32), (133.05, 34.45),
+     (133.40, 34.48), (133.75, 34.55), (134.10, 34.58), (134.45, 34.68),
+     (134.80, 34.72), (135.15, 34.82), (135.45, 34.90), (135.70, 35.05),
+     (136.05, 35.18), (136.40, 35.22), (136.78, 35.35), (137.20, 35.50),
+     (137.20, 36.20), (130.75, 36.20)],
+    # Shikoku
+    [(132.05, 33.25), (132.15, 33.50), (132.38, 33.65), (132.70, 33.72),
+     (133.05, 33.75), (133.45, 33.78), (133.85, 33.78), (134.20, 33.82),
+     (134.50, 33.95), (134.65, 34.10), (134.50, 34.22), (134.20, 34.30),
+     (133.85, 34.28), (133.55, 34.25), (133.20, 34.20), (132.90, 34.15),
+     (132.55, 34.08), (132.25, 33.90), (132.05, 33.65)],
+    # Kyushu, northeastern and eastern shore in frame
+    [(129.0, 33.05), (129.0, 34.15), (129.35, 34.10), (129.65, 33.98),
+     (130.00, 33.85), (130.30, 33.75), (130.55, 33.68), (130.75, 33.55),
+     (131.00, 33.45), (131.25, 33.30), (131.45, 33.05), (131.55, 32.8),
+     (129.0, 32.8)],
+    # Awaji
+    [(134.78, 34.18), (134.82, 34.35), (134.92, 34.52), (135.02, 34.58),
+     (135.10, 34.50), (135.08, 34.32), (135.02, 34.18), (134.90, 34.12)],
+    # Kii Peninsula and Osaka/Kobe eastern approaches
+    [(135.05, 34.18), (135.25, 34.30), (135.50, 34.42), (135.78, 34.48),
+     (136.02, 34.45), (136.20, 34.35), (136.45, 34.25), (136.70, 34.10),
+     (136.90, 33.95), (137.20, 33.80), (137.20, 35.2), (135.75, 35.2)],
+    # Northern Kyushu islands
+    [(129.45, 33.68), (129.53, 33.72), (129.60, 33.69), (129.58, 33.63),
+     (129.50, 33.62)],
+    [(129.65, 33.88), (129.75, 33.91), (129.82, 33.86), (129.78, 33.81),
+     (129.68, 33.82)],
+]
+
+# Elliptical islands, as (center_lon, center_lat, radius_lon, radius_lat).
+ISLANDS = [
+    # Geiyo Islands, between Hiroshima/Ehime
+    (132.75, 34.20, .075, .050), (132.88, 34.18, .050, .035),
+    (133.02, 34.17, .065, .045), (133.15, 34.15, .055, .040),
+    (133.28, 34.13, .070, .050), (133.40, 34.12, .055, .040),
+    (133.52, 34.10, .060, .045), (133.65, 34.08, .050, .035),
+    (133.78, 34.06, .060, .040), (133.90, 34.05, .045, .030),
+    (134.02, 34.03, .050, .035), (134.15, 34.02, .045, .030),
+    (132.92, 34.28, .055, .035), (133.12, 34.30, .060, .040),
+    (133.36, 34.29, .050, .035), (133.58, 34.31, .060, .040),
+    (133.80, 34.30, .050, .035), (134.02, 34.29, .045, .030),
+    (132.82, 34.05, .050, .035), (133.08, 34.02, .045, .030),
+    (133.32, 34.00, .050, .035), (133.58, 33.98, .045, .030),
+    (133.82, 33.96, .050, .035), (134.05, 33.95, .045, .030),
+    # Suo-nada / western inland sea
+    (131.15, 33.95, .080, .045), (131.45, 33.88, .060, .035),
+    (131.80, 33.90, .080, .045), (132.10, 33.92, .060, .040),
+    (132.42, 33.92, .070, .045), (132.60, 33.85, .050, .035),
+    # Harima-nada and Osaka Bay
+    (134.55, 34.55, .060, .040), (134.72, 34.48, .055, .035),
+    (134.95, 34.68, .060, .040), (135.18, 34.58, .050, .035),
+    # Ise Bay islands and nearby coast islets
+    (136.72, 34.72, .055, .035), (136.88, 34.65, .045, .030),
+    (136.55, 34.55, .050, .035), (136.95, 34.48, .045, .030),
+    # Shikoku nearby islands
+    (132.05, 33.95, .050, .035), (132.32, 33.78, .055, .040),
+    (134.42, 34.05, .050, .035), (134.58, 34.15, .045, .030),
+]
+
+def inside_polygon(lon, lat, polygon):
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if (yi > lat) != (yj > lat):
+            cross = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < cross:
+                inside = not inside
+        j = i
+    return inside
+
+def is_land(lon, lat):
+    if any(inside_polygon(lon, lat, poly) for poly in LAND_POLYGONS):
+        return True
+    for cx, cy, rx, ry in ISLANDS:
+        if ((lon - cx) / rx) ** 2 + ((lat - cy) / ry) ** 2 <= 1.0:
+            return True
+    return False
+
+def main():
+    lats = LAT_TOP - np.arange(ROWS) * STEP
+    lons = LON_LEFT + np.arange(COLS) * STEP
+    matrix = np.zeros((ROWS, COLS), dtype=np.uint8)
+
+    for r, lat in enumerate(lats):
+        for c, lon in enumerate(lons):
+            matrix[r, c] = int(is_land(float(lon), float(lat)))
+
+    out = Path("outputs")
+    out.mkdir(parents=True, exist_ok=True)
+
+    with (out / "candidate.csv").open("w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    pixels = np.where(matrix == 1, 255, 0).astype(np.uint8)
+    image = Image.fromarray(pixels, mode="L")
+    image.save(out / "candidate.png")
+    image.resize((COLS * 8, ROWS * 8), Image.Resampling.NEAREST).save(
+        out / "candidate_8x.png"
+    )
+
+if __name__ == "__main__":
+    main()
+```

@@ -1,0 +1,374 @@
+from pathlib import Path
+import csv
+import math
+
+import numpy as np
+from PIL import Image
+
+
+# Coordinate grid:
+# latitude: 23.0, 22.8, ..., 1.0
+# longitude: 99.0, 99.2, ..., 127.0
+N_LAT = 111
+N_LON = 141
+LAT_MAX = 23.0
+LON_MIN = 99.0
+STEP = 0.2
+
+
+# Polygon point-in-polygon test.
+# Coordinates are (longitude, latitude).
+def point_in_polygon(lon, lat, polygon):
+    inside = False
+    j = len(polygon) - 1
+
+    for i in range(len(polygon)):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+
+        # Treat points exactly on an edge as land.
+        cross = (lon - xi) * (yj - yi) - (lat - yi) * (xj - xi)
+        if abs(cross) < 1e-12:
+            if (
+                min(xi, xj) - 1e-12 <= lon <= max(xi, xj) + 1e-12
+                and min(yi, yj) - 1e-12 <= lat <= max(yi, yj) + 1e-12
+            ):
+                return True
+
+        intersects = ((yi > lat) != (yj > lat)) and (
+            lon < (xj - xi) * (lat - yi) / (yj - yi) + xi
+        )
+        if intersects:
+            inside = not inside
+
+        j = i
+
+    return inside
+
+
+def ellipse_contains(lon, lat, center_lon, center_lat, radius_lon, radius_lat):
+    x = (lon - center_lon) / radius_lon
+    y = (lat - center_lat) / radius_lat
+    return x * x + y * y <= 1.0
+
+
+# Mainland China, southern China, northern Vietnam and adjacent continental land.
+# The southern edge follows a deliberately simplified remembered coastline.
+MAINLAND = [
+    (99.0, 23.0),
+    (106.0, 23.0),
+    (108.0, 23.2),
+    (110.0, 23.4),
+    (112.0, 23.8),
+    (114.0, 24.0),
+    (116.0, 24.0),
+    (118.0, 24.0),
+    (120.0, 24.0),
+    (121.0, 23.0),
+    (120.5, 22.4),
+    (119.8, 22.0),
+    (119.4, 21.5),
+    (118.7, 21.2),
+    (117.8, 21.0),
+    (117.0, 21.0),
+    (116.1, 21.5),
+    (115.5, 21.7),
+    (114.8, 21.6),
+    (114.2, 21.3),
+    (113.7, 21.0),
+    (113.0, 20.7),
+    (112.4, 20.5),
+    (111.8, 20.3),
+    (111.3, 20.0),
+    (110.7, 19.7),
+    (110.0, 19.5),
+    (109.5, 19.0),
+    (109.0, 18.5),
+    (108.5, 18.0),
+    (108.0, 17.5),
+    (107.5, 17.0),
+    (107.0, 16.5),
+    (106.5, 16.0),
+    (106.0, 15.5),
+    (105.5, 15.0),
+    (105.0, 14.5),
+    (104.5, 14.0),
+    (104.0, 13.5),
+    (103.5, 13.0),
+    (103.0, 12.5),
+    (102.5, 12.0),
+    (102.0, 11.5),
+    (101.5, 11.0),
+    (101.0, 10.5),
+    (100.5, 10.0),
+    (99.0, 10.0),
+]
+
+
+# Cambodia, Thailand and peninsular Southeast Asia.
+PENINSULAR_SEA = [
+    (99.0, 23.0),
+    (104.0, 23.0),
+    (104.5, 22.0),
+    (104.5, 21.0),
+    (104.0, 20.0),
+    (103.5, 19.0),
+    (103.0, 18.0),
+    (102.5, 17.0),
+    (102.0, 16.0),
+    (101.5, 15.0),
+    (101.0, 14.0),
+    (100.5, 13.0),
+    (100.0, 12.0),
+    (99.5, 11.0),
+    (99.0, 10.0),
+    (99.0, 23.0),
+]
+
+
+# Main islands and island groups, represented by simplified polygons.
+ISLANDS = [
+    # Hainan
+    [
+        (108.5, 20.1), (109.3, 20.2), (110.3, 20.0),
+        (111.0, 19.5), (110.8, 18.8), (110.2, 18.2),
+        (109.5, 18.1), (108.8, 18.5), (108.4, 19.2),
+    ],
+
+    # Taiwan
+    [
+        (120.0, 25.3), (120.8, 25.5), (121.6, 25.1),
+        (122.0, 24.4), (121.7, 23.7), (121.0, 22.7),
+        (120.3, 22.0), (120.0, 23.0), (119.8, 24.2),
+    ],
+
+    # Luzon
+    [
+        (120.0, 18.5), (120.8, 18.8), (121.8, 18.5),
+        (122.7, 17.4), (123.3, 16.3), (123.0, 15.0),
+        (122.1, 14.0), (121.0, 13.3), (120.2, 14.0),
+        (119.5, 15.0), (119.3, 16.2), (119.6, 17.5),
+    ],
+
+    # Mindoro
+    [
+        (120.0, 13.5), (121.0, 13.5), (121.4, 12.8),
+        (120.8, 12.0), (120.0, 12.1), (119.6, 12.8),
+    ],
+
+    # Palawan
+    [
+        (117.0, 11.8), (117.7, 11.5), (118.0, 10.5),
+        (117.5, 9.5), (117.2, 8.5), (116.8, 8.0),
+        (116.5, 9.0), (116.4, 10.0), (116.5, 11.0),
+    ],
+
+    # Panay
+    [
+        (122.0, 11.8), (123.0, 11.8), (123.4, 11.0),
+        (122.8, 10.5), (121.9, 10.7), (121.7, 11.3),
+    ],
+
+    # Negros
+    [
+        (123.0, 10.8), (123.7, 10.8), (123.8, 9.8),
+        (123.2, 9.3), (122.8, 9.8),
+    ],
+
+    # Cebu
+    [
+        (123.7, 11.4), (124.2, 11.0), (124.1, 10.0),
+        (123.8, 9.6), (123.5, 10.2),
+    ],
+
+    # Samar
+    [
+        (124.0, 12.2), (125.0, 12.0), (125.5, 11.2),
+        (125.0, 10.2), (124.1, 10.4), (123.8, 11.2),
+    ],
+
+    # Leyte
+    [
+        (124.5, 11.5), (125.2, 11.0), (124.9, 10.0),
+        (124.2, 9.8), (124.0, 10.8),
+    ],
+
+    # Mindanao
+    [
+        (123.5, 9.5), (124.5, 9.8), (125.5, 9.5),
+        (126.5, 8.5), (126.7, 7.0), (126.0, 6.0),
+        (124.8, 5.5), (123.8, 6.2), (123.0, 7.3),
+        (123.0, 8.5),
+    ],
+
+    # Borneo
+    [
+        (109.5, 7.5), (111.0, 7.8), (113.0, 7.5),
+        (115.0, 7.2), (117.0, 7.0), (118.5, 6.2),
+        (119.5, 5.0), (119.0, 3.5), (118.0, 2.2),
+        (116.5, 1.2), (114.0, 1.0), (112.0, 1.0),
+        (110.5, 2.0), (109.5, 3.5), (109.0, 5.0),
+    ],
+
+    # Sumatra northeastern tip, only the small part inside the frame.
+    [
+        (99.0, 5.5), (100.0, 5.4), (101.0, 4.8),
+        (102.0, 4.0), (103.0, 3.2), (104.0, 2.4),
+        (104.5, 1.5), (104.5, 1.0), (99.0, 1.0),
+    ],
+]
+
+
+# Smaller islands and conspicuous island groups.
+SMALL_ISLANDS = [
+    # Gulf of Tonkin / northern Vietnam
+    (107.0, 20.8, 0.10, 0.08),
+    (107.4, 20.5, 0.08, 0.06),
+    (108.0, 20.3, 0.08, 0.06),
+
+    # Paracel Islands, represented as individual reefs/islets.
+    (111.7, 16.5, 0.10, 0.07),
+    (112.0, 16.7, 0.08, 0.06),
+    (112.3, 16.3, 0.08, 0.06),
+    (112.5, 16.8, 0.07, 0.05),
+    (111.9, 16.1, 0.06, 0.05),
+
+    # Spratly island and reef points.
+    (114.2, 11.7, 0.08, 0.05),
+    (114.5, 11.4, 0.06, 0.05),
+    (114.0, 10.7, 0.06, 0.05),
+    (115.0, 10.3, 0.07, 0.05),
+    (115.7, 10.0, 0.06, 0.05),
+    (116.0, 9.7, 0.06, 0.05),
+    (116.5, 9.5, 0.06, 0.05),
+    (117.0, 10.0, 0.06, 0.05),
+    (117.5, 9.8, 0.06, 0.05),
+    (118.0, 10.2, 0.06, 0.05),
+    (118.3, 9.7, 0.06, 0.05),
+
+    # Anambas / Natuna area.
+    (106.2, 3.0, 0.18, 0.12),
+    (107.0, 3.8, 0.20, 0.13),
+    (108.0, 4.0, 0.15, 0.10),
+
+    # Singapore and nearby islands.
+    (103.8, 1.3, 0.16, 0.08),
+    (104.0, 1.2, 0.08, 0.06),
+
+    # Sulu archipelago.
+    (120.0, 6.0, 0.08, 0.05),
+    (120.5, 5.8, 0.08, 0.05),
+    (121.0, 5.7, 0.07, 0.05),
+    (121.5, 5.9, 0.07, 0.05),
+]
+
+
+def is_land(lon, lat):
+    if point_in_polygon(lon, lat, MAINLAND):
+        return True
+
+    if point_in_polygon(lon, lat, PENINSULAR_SEA):
+        return True
+
+    for polygon in ISLANDS:
+        if point_in_polygon(lon, lat, polygon):
+            return True
+
+    for center_lon, center_lat, radius_lon, radius_lat in SMALL_ISLANDS:
+        if ellipse_contains(
+            lon,
+            lat,
+            center_lon,
+            center_lat,
+            radius_lon,
+            radius_lat,
+        ):
+            return True
+
+    return False
+
+
+def build_matrix():
+    matrix = np.zeros((N_LAT, N_LON), dtype=np.uint8)
+
+    for row in range(N_LAT):
+        lat = LAT_MAX - row * STEP
+        for col in range(N_LON):
+            lon = LON_MIN + col * STEP
+            matrix[row, col] = 1 if is_land(lon, lat) else 0
+
+    return matrix
+
+
+def write_csv(matrix, path):
+    with path.open("w", newline="", encoding="ascii") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
+        for row in matrix:
+            writer.writerow([str(int(value)) for value in row])
+
+
+def write_images(matrix, original_path, enlarged_path):
+    # 0 is water/black; 1 is land/white.
+    image_array = np.where(matrix == 1, 255, 0).astype(np.uint8)
+
+    image = Image.fromarray(image_array, mode="L")
+    image.save(original_path, format="PNG")
+
+    enlarged = image.resize(
+        (N_LON * 8, N_LAT * 8),
+        resample=Image.Resampling.NEAREST,
+    )
+    enlarged.save(enlarged_path, format="PNG")
+
+
+def validate(matrix, csv_path, original_path, enlarged_path):
+    assert matrix.shape == (111, 141)
+    assert matrix.size == 15651
+    assert set(np.unique(matrix)).issubset({0, 1})
+
+    with csv_path.open("r", newline="", encoding="ascii") as handle:
+        rows = list(csv.reader(handle))
+
+    assert len(rows) == 111
+    assert all(len(row) == 141 for row in rows)
+    assert all(value in {"0", "1"} for row in rows for value in row)
+
+    image = Image.open(original_path).convert("L")
+    assert image.size == (141, 111)
+    assert set(image.getdata()).issubset({0, 255})
+
+    enlarged = Image.open(enlarged_path).convert("L")
+    assert enlarged.size == (1128, 888)
+    assert set(enlarged.getdata()).issubset({0, 255})
+
+    # Verify every 8x8 block is constant, which confirms nearest-neighbor scaling.
+    enlarged_array = np.asarray(enlarged)
+    for y in range(N_LAT):
+        for x in range(N_LON):
+            block = enlarged_array[y * 8:(y + 1) * 8, x * 8:(x + 1) * 8]
+            assert np.all(block == block[0, 0])
+
+
+def main():
+    output_dir = Path.cwd() / "outputs"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = output_dir / "candidate.csv"
+    original_path = output_dir / "candidate.png"
+    enlarged_path = output_dir / "candidate_8x.png"
+
+    matrix = build_matrix()
+    write_csv(matrix, csv_path)
+    write_images(matrix, original_path, enlarged_path)
+    validate(matrix, csv_path, original_path, enlarged_path)
+
+    print(f"matrix: {matrix.shape[0]} rows x {matrix.shape[1]} columns")
+    print(f"values: {matrix.size}")
+    print(f"csv: {csv_path}")
+    print(f"original png: {original_path} ({N_LON}x{N_LAT})")
+    print(f"enlarged png: {enlarged_path} ({N_LON * 8}x{N_LAT * 8})")
+    print("validation: passed")
+
+
+if __name__ == "__main__":
+    main()

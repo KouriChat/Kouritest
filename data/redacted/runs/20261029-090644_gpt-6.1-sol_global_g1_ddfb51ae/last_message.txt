@@ -1,0 +1,413 @@
+下面脚本仅使用手写的近似陆地轮廓和少量岛屿、湖泊规则，不联网、不读取任何外部地理数据。运行后会自动创建 `outputs/` 并生成矩阵及两张 PNG 图片。
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from pathlib import Path
+import csv
+import numpy as np
+from PIL import Image
+
+
+ROWS = 90
+COLS = 180
+
+LATITUDES = np.arange(89, -90, -2, dtype=float)
+LONGITUDES = np.arange(-179, 180, 2, dtype=float)
+
+
+# 多边形坐标格式为 (经度, 纬度)。
+# 这些轮廓是基于一般地理知识手工近似构造的，不来自地图或地理数据库。
+LAND_POLYGONS = [
+    # 北美洲主体
+    [
+        (-168, 72), (-155, 72), (-145, 70), (-136, 70),
+        (-130, 68), (-124, 64), (-116, 60), (-108, 58),
+        (-101, 54), (-96, 51), (-90, 49), (-84, 47),
+        (-80, 44), (-76, 43), (-73, 45), (-70, 46),
+        (-67, 48), (-63, 49), (-60, 53), (-63, 57),
+        (-68, 60), (-74, 63), (-80, 65), (-87, 67),
+        (-96, 69), (-105, 71), (-115, 73), (-125, 75),
+        (-137, 76), (-150, 76), (-162, 74),
+    ],
+
+    # 阿拉斯加及阿留申西部
+    [
+        (-171, 71), (-160, 71), (-150, 67), (-145, 62),
+        (-151, 58), (-160, 55), (-166, 57), (-172, 62),
+    ],
+
+    # 格陵兰岛
+    [
+        (-73, 83), (-55, 84), (-40, 82), (-25, 77),
+        (-18, 70), (-22, 62), (-35, 59), (-48, 60),
+        (-61, 65), (-70, 72),
+    ],
+
+    # 中美洲
+    [
+        (-97, 26), (-90, 22), (-87, 18), (-84, 16),
+        (-86, 12), (-82, 10), (-79, 9), (-77, 12),
+        (-79, 17), (-84, 20), (-88, 22), (-94, 25),
+    ],
+
+    # 南美洲
+    [
+        (-81, 12), (-75, 11), (-70, 9), (-65, 10),
+        (-60, 8), (-54, 6), (-50, 2), (-47, -2),
+        (-44, -8), (-39, -14), (-36, -21), (-39, -28),
+        (-45, -34), (-51, -39), (-57, -45), (-64, -51),
+        (-69, -55), (-74, -52), (-75, -45), (-72, -37),
+        (-70, -30), (-72, -22), (-75, -15), (-79, -7),
+        (-81, 1),
+    ],
+
+    # 欧洲和亚洲主体
+    [
+        (-10, 36), (-5, 43), (2, 47), (8, 50),
+        (15, 54), (20, 58), (27, 61), (35, 65),
+        (45, 69), (58, 72), (72, 73), (87, 72),
+        (102, 71), (116, 70), (130, 68), (143, 64),
+        (155, 59), (163, 54), (169, 49), (169, 43),
+        (160, 42), (151, 45), (143, 43), (137, 39),
+        (130, 35), (122, 32), (115, 28), (108, 23),
+        (101, 20), (94, 18), (87, 21), (81, 26),
+        (75, 28), (68, 25), (61, 24), (54, 27),
+        (47, 30), (40, 35), (34, 38), (28, 40),
+        (22, 39), (16, 38), (10, 37), (4, 36),
+        (-2, 36),
+    ],
+
+    # 阿拉伯半岛
+    [
+        (35, 31), (43, 31), (52, 27), (57, 22),
+        (55, 16), (49, 13), (43, 16), (38, 22),
+    ],
+
+    # 印度次大陆
+    [
+        (67, 25), (74, 29), (81, 27), (88, 24),
+        (92, 20), (88, 14), (83, 8), (78, 7),
+        (73, 10), (69, 17),
+    ],
+
+    # 东南亚大陆
+    [
+        (95, 22), (101, 24), (106, 21), (110, 17),
+        (108, 12), (104, 8), (101, 3), (97, 5),
+        (96, 12),
+    ],
+
+    # 非洲
+    [
+        (-17, 35), (-7, 37), (3, 36), (12, 34),
+        (22, 32), (31, 30), (37, 25), (43, 14),
+        (48, 6), (44, -3), (39, -12), (35, -21),
+        (31, -29), (24, -34), (15, -35), (7, -34),
+        (1, -29), (-5, -20), (-10, -9), (-15, 2),
+        (-17, 13), (-22, 22),
+    ],
+
+    # 马达加斯加
+    [
+        (43, -12), (49, -13), (50, -21), (48, -28),
+        (44, -26), (42, -19),
+    ],
+
+    # 澳大利亚
+    [
+        (113, -11), (123, -12), (134, -12), (143, -15),
+        (151, -20), (154, -27), (151, -34), (145, -39),
+        (136, -38), (128, -35), (120, -34), (115, -29),
+        (113, -21),
+    ],
+
+    # 新几内亚
+    [
+        (130, -2), (140, -2), (150, -5), (153, -9),
+        (147, -11), (138, -9), (132, -6),
+    ],
+
+    # 南岛和北岛
+    [
+        (166, -34), (175, -36), (178, -42),
+        (172, -47), (166, -45), (163, -39),
+    ],
+    [
+        (173, -35), (178, -38), (177, -42), (171, -41),
+    ],
+
+    # 南极洲：覆盖陆地冰盖，南纬 60 度以南的近似主体
+    [
+        (-180, -60), (-150, -63), (-120, -67), (-90, -70),
+        (-60, -68), (-30, -71), (0, -69), (30, -70),
+        (60, -68), (90, -70), (120, -67), (150, -64),
+        (180, -60), (180, -90), (-180, -90),
+    ],
+
+    # 日本列岛的近似陆地区域
+    [
+        (130, 34), (135, 35), (141, 39), (145, 44),
+        (142, 46), (136, 42), (132, 37),
+    ],
+
+    # 菲律宾群岛近似合并区域
+    [
+        (120, 19), (125, 18), (126, 12), (123, 7),
+        (118, 7), (117, 13),
+    ],
+
+    # 婆罗洲
+    [
+        (109, 7), (118, 8), (119, 2), (115, -4),
+        (109, -3), (105, 1),
+    ],
+
+    # 苏门答腊
+    [
+        (95, 5), (103, 5), (106, 0), (104, -6),
+        (99, -5), (96, 0),
+    ],
+
+    # 斯里兰卡
+    [
+        (79, 10), (82, 9), (82, 6), (80, 5),
+        (79, 7),
+    ],
+
+    # 冰岛
+    [
+        (-25, 66), (-18, 66), (-13, 64), (-16, 63),
+        (-23, 64),
+    ],
+
+    # 英国和爱尔兰
+    [
+        (-8, 58), (-2, 58), (1, 54), (-2, 50),
+        (-6, 51), (-8, 54),
+    ],
+    [
+        (-11, 55), (-6, 55), (-6, 52), (-10, 51),
+    ],
+
+    # 西西里岛与撒丁岛
+    [
+        (12, 38), (16, 38), (15, 36), (12, 37),
+    ],
+    [
+        (8, 41), (10, 41), (10, 38), (8, 39),
+    ],
+
+    # 台湾
+    [
+        (120, 25), (122, 25), (122, 22), (120, 22),
+    ],
+
+    # 海南岛
+    [
+        (108, 20), (111, 20), (110, 18), (108, 19),
+    ],
+
+    # 库页岛
+    [
+        (141, 54), (145, 53), (145, 46), (142, 46),
+    ],
+]
+
+
+# 手工近似的主要内陆湖泊。
+# 湖泊属于水域，因此在陆地判断完成后将其扣除。
+LAKE_POLYGONS = [
+    # 五大湖合并近似区域
+    [
+        (-93, 49), (-83, 49), (-76, 46), (-79, 42),
+        (-88, 42), (-94, 45),
+    ],
+
+    # 大盐湖
+    [
+        (-113, 42), (-111, 42), (-111, 40), (-113, 40),
+    ],
+
+    # 密歇根湖及附近湖区
+    [
+        (-89, 47), (-84, 46), (-85, 42), (-89, 42),
+    ],
+
+    # 里海
+    [
+        (47, 47), (54, 46), (54, 39), (48, 37),
+        (45, 41),
+    ],
+
+    # 咸海
+    [
+        (58, 47), (61, 46), (61, 43), (58, 42),
+    ],
+
+    # 贝加尔湖
+    [
+        (106, 56), (110, 53), (108, 51), (105, 53),
+    ],
+
+    # 维多利亚湖
+    [
+        (31, 2), (34, 1), (34, -3), (32, -4),
+        (30, -1),
+    ],
+
+    # 坦噶尼喀湖
+    [
+        (29, -3), (31, -9), (30, -7), (29, -3),
+    ],
+]
+
+
+def point_on_segment(x, y, x1, y1, x2, y2):
+    cross = (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1)
+    if abs(cross) > 1e-12:
+        return False
+
+    return (
+        min(x1, x2) - 1e-12 <= x <= max(x1, x2) + 1e-12
+        and min(y1, y2) - 1e-12 <= y <= max(y1, y2) + 1e-12
+    )
+
+
+def point_in_polygon(lon, lat, polygon):
+    inside = False
+    n = len(polygon)
+
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+
+        if point_on_segment(lon, lat, x1, y1, x2, y2):
+            return True
+
+        crosses_latitude = (y1 > lat) != (y2 > lat)
+        if crosses_latitude:
+            intersection_lon = (
+                (x2 - x1) * (lat - y1) / (y2 - y1) + x1
+            )
+            if lon < intersection_lon:
+                inside = not inside
+
+    return inside
+
+
+def is_land(lon, lat):
+    for polygon in LAND_POLYGONS:
+        if point_in_polygon(lon, lat, polygon):
+            for lake in LAKE_POLYGONS:
+                if point_in_polygon(lon, lat, lake):
+                    return 0
+            return 1
+
+    return 0
+
+
+def build_matrix():
+    matrix = np.zeros((ROWS, COLS), dtype=np.uint8)
+
+    for row, lat in enumerate(LATITUDES):
+        for col, lon in enumerate(LONGITUDES):
+            matrix[row, col] = is_land(float(lon), float(lat))
+
+    return matrix
+
+
+def write_csv(matrix, path):
+    with path.open("w", newline="", encoding="ascii") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
+        for row in matrix:
+            writer.writerow([str(int(value)) for value in row])
+
+
+def write_images(matrix, original_path, enlarged_path):
+    # 0 表示水域，转换为黑色；1 表示陆地，转换为白色。
+    pixels = matrix * 255
+    image = Image.fromarray(pixels.astype(np.uint8), mode="L")
+    image.save(original_path)
+
+    enlarged = image.resize((1440, 720), resample=Image.Resampling.NEAREST)
+    enlarged.save(enlarged_path)
+
+
+def validate(matrix, csv_path, original_path, enlarged_path):
+    if matrix.shape != (90, 180):
+        raise RuntimeError(f"矩阵尺寸错误：{matrix.shape}")
+
+    values = set(int(value) for value in matrix.ravel())
+    if not values.issubset({0, 1}):
+        raise RuntimeError(f"矩阵包含非法值：{values}")
+
+    if matrix.size != 16200:
+        raise RuntimeError(f"有效值数量错误：{matrix.size}")
+
+    with csv_path.open("r", encoding="ascii") as handle:
+        lines = handle.read().splitlines()
+
+    if len(lines) != 90:
+        raise RuntimeError("CSV 行数错误")
+
+    for line in lines:
+        fields = line.split(",")
+        if len(fields) != 180:
+            raise RuntimeError("CSV 列数错误")
+        if any(field not in {"0", "1"} for field in fields):
+            raise RuntimeError("CSV 含有非 0/1 值")
+
+    with Image.open(original_path) as image:
+        if image.size != (180, 90):
+            raise RuntimeError(f"原始图片尺寸错误：{image.size}")
+
+        colors = set(image.getdata())
+        if not colors.issubset({0, 255}):
+            raise RuntimeError(f"原始图片含有非黑白像素：{colors}")
+
+    with Image.open(enlarged_path) as image:
+        if image.size != (1440, 720):
+            raise RuntimeError(f"放大图片尺寸错误：{image.size}")
+
+        colors = set(image.getdata())
+        if not colors.issubset({0, 255}):
+            raise RuntimeError(f"放大图片含有非黑白像素：{colors}")
+
+
+def main():
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = output_dir / "candidate.csv"
+    original_path = output_dir / "candidate.png"
+    enlarged_path = output_dir / "candidate_8x.png"
+
+    matrix = build_matrix()
+    write_csv(matrix, csv_path)
+    write_images(matrix, original_path, enlarged_path)
+    validate(matrix, csv_path, original_path, enlarged_path)
+
+    print("生成完成：")
+    print(f"  {csv_path}")
+    print(f"  {original_path}")
+    print(f"  {enlarged_path}")
+    print("矩阵尺寸：90 x 180")
+    print("有效值数量：16,200")
+    print("取值范围：0/1")
+    print("图片放大方式：最近邻，8 倍")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+运行依赖：
+
+```bash
+pip install numpy pillow
+python generate_map.py
+```
+
+判断方法是：对每个采样点使用经纬度多边形包含测试；点落入手写大陆或岛屿轮廓时标记为 `1`，落入手写内陆湖泊轮廓时重新标记为 `0`，其余点标记为 `0`。脚本不会对 16,200 个点分别调用语言模型推理。

@@ -1,0 +1,212 @@
+{
+  "generated_at": "2026-10-29T08:03:32.075259+08:00",
+  "source_manifests": [
+    {
+      "condition": "OR",
+      "path": "[local-path]"
+    },
+    {
+      "condition": "A",
+      "path": "[local-path]"
+    },
+    {
+      "condition": "B",
+      "path": "[local-path]"
+    },
+    {
+      "condition": "C",
+      "path": "[local-path]"
+    },
+    {
+      "condition": "D",
+      "path": "[local-path]"
+    },
+    {
+      "condition": "E",
+      "path": "[local-path]"
+    },
+    {
+      "condition": "F",
+      "path": "[local-path]"
+    }
+  ],
+  "attempts": 903,
+  "status_counts": {
+    "failed": 262,
+    "ok": 578,
+    "partial": 63
+  },
+  "ok": 578,
+  "partial": 63,
+  "failed": 262,
+  "condition_summary": [
+    {
+      "condition": "OR",
+      "provider_dir": "experiments",
+      "attempts": 294,
+      "ok": 120,
+      "partial": 4,
+      "failed": 170,
+      "valid_rate": 0.40816326530612246,
+      "cost_observed_n": 238,
+      "cost_missing_n": 56,
+      "final_turn_cost_observed_usd": 34.629563100000006,
+      "final_turn_cost_mean_usd": 0.14550236596638658,
+      "duration_median_sec": 196.0,
+      "retries_total": 91
+    },
+    {
+      "condition": "A",
+      "provider_dir": "channel-A_xfcode_providerA",
+      "attempts": 120,
+      "ok": 109,
+      "partial": 4,
+      "failed": 7,
+      "valid_rate": 0.9083333333333333,
+      "cost_observed_n": 0,
+      "cost_missing_n": 120,
+      "final_turn_cost_observed_usd": NaN,
+      "final_turn_cost_mean_usd": NaN,
+      "duration_median_sec": 305.4,
+      "retries_total": 106
+    },
+    {
+      "condition": "B",
+      "provider_dir": "S1_s009mix_providerB",
+      "attempts": 31,
+      "ok": 30,
+      "partial": 0,
+      "failed": 1,
+      "valid_rate": 0.967741935483871,
+      "cost_observed_n": 0,
+      "cost_missing_n": 31,
+      "final_turn_cost_observed_usd": NaN,
+      "final_turn_cost_mean_usd": NaN,
+      "duration_median_sec": 640.9,
+      "retries_total": 5
+    },
+    {
+      "condition": "C",
+      "provider_dir": "S1_s007mix3_providerC",
+      "attempts": 130,
+      "ok": 107,
+      "partial": 21,
+      "failed": 2,
+      "valid_rate": 0.823076923076923,
+      "cost_observed_n": 0,
+      "cost_missing_n": 130,
+      "final_turn_cost_observed_usd": NaN,
+      "final_turn_cost_mean_usd": NaN,
+      "duration_median_sec": 124.8,
+      "retries_total": 8
+    },
+    {
+      "condition": "D",
+      "provider_dir": "channel-A_channel-D_providerD",
+      "attempts": 90,
+      "ok": 79,
+      "partial": 10,
+      "failed": 1,
+      "valid_rate": 0.8777777777777778,
+      "cost_observed_n": 0,
+      "cost_missing_n": 90,
+      "final_turn_cost_observed_usd": NaN,
+      "final_turn_cost_mean_usd": NaN,
+      "duration_median_sec": 239.3,
+      "retries_total": 22
+    },
+    {
+      "condition": "E",
+      "provider_dir": "channel-A_channel-E_providerE",
+      "attempts": 125,
+      "ok": 47,
+      "partial": 1,
+      "failed": 77,
+      "valid_rate": 0.376,
+      "cost_observed_n": 0,
+      "cost_missing_n": 125,
+      "final_turn_cost_observed_usd": NaN,
+      "final_turn_cost_mean_usd": NaN,
+      "duration_median_sec": 237.0,
+      "retries_total": 463
+    },
+    {
+      "condition": "F",
+      "provider_dir": "channel-A_channel-E_providerF",
+      "attempts": 113,
+      "ok": 86,
+      "partial": 23,
+      "failed": 4,
+      "valid_rate": 0.7610619469026548,
+      "cost_observed_n": 0,
+      "cost_missing_n": 113,
+      "final_turn_cost_observed_usd": NaN,
+      "final_turn_cost_mean_usd": NaN,
+      "duration_median_sec": 142.2,
+      "retries_total": 4
+    }
+  ],
+  "prompt_consistency": [
+    {
+      "task": "arctic01",
+      "n_nonfailed": 119,
+      "unique_prompt_hashes": 1,
+      "dominant_prompt_sha256": "205d51ed38107ba41e78ddad7dfa494a67a168460679facc9216349cc5498684",
+      "dominant_n": 119,
+      "dominant_fraction": 1.0
+    },
+    {
+      "task": "csc",
+      "n_nonfailed": 105,
+      "unique_prompt_hashes": 1,
+      "dominant_prompt_sha256": "fc65ca27be0c335304b30e9ae82817db140b00faa8ef3482c12bce3828360aea",
+      "dominant_n": 105,
+      "dominant_fraction": 1.0
+    },
+    {
+      "task": "dzh",
+      "n_nonfailed": 99,
+      "unique_prompt_hashes": 1,
+      "dominant_prompt_sha256": "ed60d2d0403da116ee920e35b57d8eca0509572e4331d15e0459b831ea2f9894",
+      "dominant_n": 99,
+      "dominant_fraction": 1.0
+    },
+    {
+      "task": "global",
+      "n_nonfailed": 105,
+      "unique_prompt_hashes": 1,
+      "dominant_prompt_sha256": "3b29f0597bf52e8706872573ef54a081c777de4a7d6ad8268514209bffa9dd12",
+      "dominant_n": 105,
+      "dominant_fraction": 1.0
+    },
+    {
+      "task": "hecate",
+      "n_nonfailed": 111,
+      "unique_prompt_hashes": 1,
+      "dominant_prompt_sha256": "50313a41be43a3e640dd6e88e129b3b69da3437e0866b9b2019d4c880add1322",
+      "dominant_n": 111,
+      "dominant_fraction": 1.0
+    },
+    {
+      "task": "seto",
+      "n_nonfailed": 102,
+      "unique_prompt_hashes": 1,
+      "dominant_prompt_sha256": "551d6fb3df8fe61af981ea454ba6fed3f898405e2c81a6cf0981578386d8f3c1",
+      "dominant_n": 102,
+      "dominant_fraction": 1.0
+    }
+  ],
+  "metric_redundancy": {
+    "n_complete_ok": 578,
+    "pearson_acc_hss": 0.995110171589956,
+    "pearson_acc_bf1": 0.8820142925570681,
+    "pearson_acc_iou": 0.636393587614006,
+    "pearson_bf1_iou": 0.7395337149210736
+  },
+  "cost_caveat": "Costs are observable final-turn response costs only. Intermediate tool turns and subscription-backed providers may not expose final per-attempt total cost.",
+  "excluded_unscored_batch": {
+    "condition": "C-excluded",
+    "path": "[local-path]",
+    "attempt_records": 18
+  }
+}

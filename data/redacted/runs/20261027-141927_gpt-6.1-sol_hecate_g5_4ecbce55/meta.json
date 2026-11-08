@@ -1,0 +1,30 @@
+{
+  "run_id": "20261027-141927_gpt-6.1-sol_hecate_g5_4ecbce55",
+  "channel": "E",
+  "batch_id": "batch-12",
+  "started_at": "2026-10-27T14:19:27+08:00",
+  "finished_at": "2026-10-27T14:22:31+08:00",
+  "duration_sec": 183.8,
+  "status": "failed",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": 4,
+  "model": "gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "hecate",
+  "task_label": "赫卡特海峡 2/126°",
+  "group": 5,
+  "prompt_sha256": "50313a41be43a3e640dd6e88e129b3b69da3437e0866b9b2019d4c880add1322",
+  "error": "RuntimeError: {\"type\": \"response.failed\", \"sequence_number\": 0, \"response\": {\"id\": \"resp_1e812f8eb4c84c83a5d13eff4d5cb989\", \"object\": \"response\", \"created_at\": 1793082150, \"model\": \"gpt-6.1-sol\", \"status\": \"failed\", \"output\": [], \"error\": {\"code\": \"upstream_error\", \"message\": \"Upstream service temporarily unavailable\"}}}",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "last_message.txt": "runs/20261027-141927_gpt-6.1-sol_hecate_g5_4ecbce55/last_message.txt"
+  }
+}

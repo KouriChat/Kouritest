@@ -1,0 +1,1 @@
+The `apply_patch` tool creates empty files here, but `exec_command` writes persist. I'll build the script via stdin piping and validate.

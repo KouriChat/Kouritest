@@ -1,0 +1,79 @@
+from pathlib import Path
+import csv
+import numpy as np
+from PIL import Image
+
+# 坐标按“西经度数, 北纬度数”书写；轮廓均为凭已有知识绘制的近似。
+land_text = """
+Ellef Ringnes|105,78.20 104.9,78.70 104.4,78.96 102.8,79.16 100.7,79.08 99.5,78.86 99.2,78.47 99.7,78.14 100.7,77.96 101.7,78.09 102.7,77.87 103.8,78.01 104.3,78.22
+Amund Ringnes|99.1,78.49 98.3,78.85 97.0,79.08 95.6,78.98 94.8,78.66 95.3,78.28 96.6,78.06 98.0,78.14 98.9,78.30
+Axel Heiberg|95.6,79.3 95.2,78.91 94.5,78.58 93.3,78.42 92.4,78.55 91.8,78.80 90.7,78.94 89.5,79.3
+Ellesmere|90.5,79.3 90.0,78.92 89.1,78.61 88.4,78.15 87.6,77.91 87.2,77.42 85.9,77.11 84.6,76.79 83.3,76.76 82.1,76.48 81,76.32 80,76.2 80,80
+King Christian|103.7,77.70 103.1,78.03 102.3,78.12 101.7,77.89 101.9,77.60 102.9,77.53
+Bathurst|104.1,76.42 103.6,76.97 102.7,77.05 102.1,77.53 101.2,77.66 100.5,77.44 99.7,77.46 98.6,77.20 98.7,76.87 99.2,76.68 98.6,76.40 98.9,76.10 98.6,75.76 99.5,75.54 100.4,75.59 101.0,75.82 102.0,75.80 102.4,76.05 103.4,76.13
+Alexander|104.7,76.15 104.1,76.42 103.6,76.37 103.4,76.04 103.9,75.92 104.5,75.97
+Melville edge|105.4,76.56 104.9,76.38 104.6,76.09 104.7,75.72 105.2,75.42
+Cornwallis|97.3,75.29 96.9,75.73 96.0,75.94 94.9,75.92 93.8,75.65 93.2,75.21 93.4,74.69 94.2,74.43 95.5,74.54 96.6,74.76
+Devon|96.4,75.62 95.7,76.12 94.7,76.47 93.6,76.63 92.3,76.68 91.2,76.48 89.9,76.56 88.6,76.76 87.4,76.62 86.0,76.72 84.7,76.63 83.6,76.47 82.4,76.38 81.0,76.05 80.5,75.63 81.1,75.01 82.4,74.76 83.7,74.53 85.2,74.35 86.7,74.34 88.0,74.48 89.2,74.68 90.3,74.91 91.2,75.16 92.5,75.43 93.6,75.59 94.7,75.48 95.7,75.36
+Prince of Wales|101.4,72.7 101.1,73.33 100.4,73.70 100.2,74.04 99.2,74.36 98.4,74.40 97.6,74.22 96.9,74.28 96.0,74.02 95.2,73.87 94.8,73.40 95.1,72.7
+Somerset|95.0,72.7 94.7,73.48 94.7,73.95 94.0,74.18 92.9,74.32 91.6,74.36 90.7,74.20 90.1,73.96 90.3,73.30 90.6,72.7
+Victoria edge|105.5,72.7 105.5,73.87 105.0,73.71 104.6,73.37 103.8,73.12 103.2,72.7
+Baffin edge|88.7,72.7 88.4,73.04 87.5,73.23 86.5,73.21 85.7,73.44 84.9,73.52 83.9,73.35 83.0,73.38 82.1,73.16 81.3,72.7
+Bylot edge|82.0,73.07 81.8,73.34 81.5,73.65 80.5,73.96 80.5,73.30 81.0,73.11
+Graham Island|91.5,77.34 91.0,77.63 90.3,77.75 89.7,77.58 89.9,77.30 90.7,77.20
+"""
+# 从陆地轮廓中扣除较明显的近似海湾／水道。
+water_text = """
+Bathurst inlet|101.7,75.30 101.3,75.83 100.7,76.22 100.5,76.43 100.9,76.34 101.2,75.95 102.0,75.30
+Bathurst east bay|98.2,76.53 99.0,76.55 99.7,76.72 99.4,76.86 98.8,76.79 98.2,76.78
+Devon south bay|86.4,73.9 86.3,74.61 85.8,75.02 85.2,75.24 85.4,74.96 85.7,74.52 85.6,73.9
+"""
+def parse(text):
+    return [(name, [(float(w), float(n)) for w, n in
+            (pair.split(",") for pair in points.split())])
+            for name, points in (line.split("|", 1) for line in text.strip().splitlines())]
+
+def inside(w, n, polygon):
+    hit = False
+    for (a, b), (c, d) in zip(polygon, polygon[1:] + polygon[:1]):
+        if (b > n) != (d > n) and w < a + (n - b) * (c - a) / (d - b):
+            hit = not hit
+    return hit
+
+land, water = parse(land_text), parse(water_text)
+# 小岛：中心西经、中心北纬、西经半径、纬度半径。
+islets = [(95.56,74.57,.33,.14), (96.69,75.72,.34,.14),
+          (94.65,75.97,.34,.16), (92.70,74.69,.26,.11),
+          (90.05,74.04,.19,.13), (98.40,74.48,.45,.12),
+          (99.24,75.18,.20,.12), (90.55,76.92,.36,.17)]
+matrix = np.zeros((61, 241), dtype=np.uint8)
+for row in range(61):
+    n = round(79 - row * .1, 1)
+    for col in range(241):
+        w = round(105 - col * .1, 1)
+        on_land = any(inside(w, n, p) for _, p in land)
+        on_land |= any(((w-x)/rx)**2 + ((n-y)/ry)**2 <= 1
+                       for x, y, rx, ry in islets)
+        matrix[row, col] = int(on_land and
+                               not any(inside(w, n, p) for _, p in water))
+
+out = Path("outputs")
+out.mkdir(exist_ok=True)
+with (out / "candidate.csv").open("w", newline="", encoding="utf-8") as f:
+    csv.writer(f).writerows(matrix.tolist())
+image = Image.fromarray(matrix * 255, mode="L").convert("RGB")
+image.save(out / "candidate.png")
+large = image.resize((1928, 488), Image.Resampling.NEAREST)
+large.save(out / "candidate_8x.png")
+
+with (out / "candidate.csv").open(newline="", encoding="utf-8") as f:
+    rows = list(csv.reader(f))
+assert len(rows) == 61 and all(len(r) == 241 for r in rows)
+assert all(value in ("0", "1") for r in rows for value in r)
+assert sum(map(len, rows)) == 14701
+assert image.size == (241, 61) and large.size == (1928, 488)
+assert set(image.getdata()) <= {(0, 0, 0), (255, 255, 255)}
+assert set(large.getdata()) <= {(0, 0, 0), (255, 255, 255)}
+assert np.array_equal(np.asarray(large), np.repeat(
+    np.repeat(np.asarray(image), 8, axis=0), 8, axis=1))
+print("已生成并验证 outputs/candidate.csv、candidate.png、candidate_8x.png")

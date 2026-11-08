@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""Knowledge-based, approximate land mask for the Seto Inland Sea region.
+
+No external geographic data is read or downloaded. Land is represented by
+hand-written polygons and ellipses; each sample point is tested directly.
+"""
+
+from pathlib import Path
+import csv
+import math
+
+import numpy as np
+from PIL import Image
+
+
+WEST = 129.0
+EAST = 137.0
+SOUTH = 33.0
+NORTH = 35.0
+STEP = 2.0 / 63.0
+ROWS = 64
+COLS = 253
+
+
+# Polygons are (longitude, latitude), ordered around their approximate coast.
+# Broad mainland polygons intentionally extend beyond the sampled frame.
+LAND_POLYGONS = [
+    # Kyushu, including the Fukuoka-Saga-Nagasaki and Kumamoto-Oita regions.
+    [
+        (129.00, 33.00), (129.08, 33.25), (129.18, 33.43), (129.35, 33.55),
+        (129.50, 33.65), (129.64, 33.82), (129.72, 34.02), (129.88, 34.18),
+        (130.05, 34.20), (130.20, 34.12), (130.34, 34.00), (130.48, 33.88),
+        (130.63, 33.79), (130.76, 33.72), (130.91, 33.70), (131.04, 33.67),
+        (131.18, 33.59), (131.32, 33.50), (131.46, 33.42), (131.56, 33.27),
+        (131.62, 33.00), (137.00, 33.00), (137.00, 35.00), (129.00, 35.00),
+    ],
+    # Western Honshu, with the south coast along the Suo-nada and Seto Inland Sea.
+    [
+        (130.78, 34.00), (130.90, 34.04), (131.03, 34.02), (131.15, 33.98),
+        (131.30, 33.96), (131.46, 33.96), (131.64, 33.98), (131.82, 34.01),
+        (132.00, 34.02), (132.18, 34.03), (132.35, 34.08), (132.53, 34.12),
+        (132.70, 34.13), (132.88, 34.16), (133.05, 34.19), (133.22, 34.22),
+        (133.39, 34.25), (133.58, 34.27), (133.76, 34.29), (133.92, 34.32),
+        (134.08, 34.34), (134.25, 34.35), (134.40, 34.38), (134.56, 34.41),
+        (134.70, 34.44), (134.82, 34.48), (134.92, 34.51), (135.02, 34.54),
+        (135.14, 34.57), (135.25, 34.59), (135.36, 34.62), (135.50, 34.64),
+        (135.65, 34.65), (135.82, 34.67), (135.98, 34.70), (136.12, 34.73),
+        (136.22, 34.77), (136.34, 34.80), (136.48, 34.83), (136.62, 34.85),
+        (136.80, 34.88), (137.00, 34.90), (137.00, 35.00), (130.78, 35.00),
+    ],
+    # Shikoku; the sampled frame cuts off its southern part.
+    [
+        (132.00, 33.00), (132.12, 33.08), (132.25, 33.16), (132.42, 33.20),
+        (132.62, 33.22), (132.82, 33.21), (133.02, 33.20), (133.22, 33.22),
+        (133.43, 33.25), (133.62, 33.28), (133.82, 33.32), (134.02, 33.37),
+        (134.20, 33.42), (134.37, 33.49), (134.53, 33.58), (134.66, 33.69),
+        (134.73, 33.82), (134.70, 33.95), (134.63, 34.08), (134.50, 34.17),
+        (134.32, 34.20), (134.10, 34.18), (133.88, 34.16), (133.66, 34.13),
+        (133.43, 34.10), (133.22, 34.07), (133.02, 34.04), (132.82, 34.02),
+        (132.62, 34.00), (132.42, 33.98), (132.23, 33.93), (132.08, 33.84),
+        (132.00, 33.70),
+    ],
+    # Awaji Island.
+    [
+        (134.78, 34.20), (134.84, 34.24), (134.90, 34.33), (134.94, 34.43),
+        (134.96, 34.53), (134.94, 34.62), (134.90, 34.67), (134.85, 34.64),
+        (134.82, 34.55), (134.79, 34.44), (134.76, 34.33),
+    ],
+    # Shodoshima.
+    [
+        (134.05, 34.43), (134.15, 34.45), (134.27, 34.47), (134.37, 34.51),
+        (134.43, 34.56), (134.38, 34.61), (134.27, 34.63), (134.16, 34.61),
+        (134.07, 34.57), (134.02, 34.51),
+    ],
+    # Small islands in the western Inland Sea and around Hiroshima.
+    [
+        (132.05, 34.06), (132.12, 34.08), (132.19, 34.07), (132.22, 34.03),
+        (132.15, 34.00), (132.08, 34.01),
+    ],
+    [
+        (132.32, 34.16), (132.39, 34.18), (132.46, 34.16), (132.48, 34.12),
+        (132.42, 34.10), (132.35, 34.12),
+    ],
+    [
+        (132.55, 34.20), (132.62, 34.22), (132.70, 34.20), (132.72, 34.16),
+        (132.65, 34.14), (132.58, 34.16),
+    ],
+    # Geiyo Islands: Omishima, Hakatajima, Oshima, Innoshima, Ikuchijima,
+    # Mukaishima, Iwagi, Yuge and nearby islands.
+    [
+        (132.91, 34.19), (133.00, 34.22), (133.09, 34.21), (133.13, 34.17),
+        (133.08, 34.13), (132.98, 34.14),
+    ],
+    [
+        (132.98, 34.08), (133.05, 34.10), (133.12, 34.08), (133.13, 34.04),
+        (133.07, 34.02), (133.00, 34.04),
+    ],
+    [
+        (133.10, 34.24), (133.20, 34.27), (133.30, 34.26), (133.35, 34.22),
+        (133.30, 34.18), (133.19, 34.19),
+    ],
+    [
+        (133.13, 34.14), (133.21, 34.16), (133.28, 34.14), (133.30, 34.10),
+        (133.24, 34.08), (133.16, 34.10),
+    ],
+    [
+        (133.20, 34.32), (133.29, 34.34), (133.37, 34.32), (133.39, 34.28),
+        (133.32, 34.26), (133.24, 34.28),
+    ],
+    [
+        (133.30, 34.18), (133.37, 34.20), (133.44, 34.18), (133.46, 34.14),
+        (133.40, 34.12), (133.33, 34.14),
+    ],
+    [
+        (133.37, 34.26), (133.43, 34.28), (133.49, 34.26), (133.50, 34.23),
+        (133.44, 34.21), (133.39, 34.23),
+    ],
+    [
+        (133.41, 34.13), (133.48, 34.15), (133.55, 34.13), (133.56, 34.09),
+        (133.49, 34.07), (133.43, 34.09),
+    ],
+    [
+        (133.50, 34.31), (133.58, 34.33), (133.66, 34.31), (133.67, 34.27),
+        (133.60, 34.25), (133.53, 34.27),
+    ],
+    [
+        (133.55, 34.18), (133.63, 34.20), (133.70, 34.18), (133.71, 34.14),
+        (133.65, 34.12), (133.58, 34.14),
+    ],
+    [
+        (133.67, 34.37), (133.75, 34.39), (133.84, 34.37), (133.86, 34.33),
+        (133.78, 34.31), (133.70, 34.33),
+    ],
+    [
+        (133.72, 34.22), (133.79, 34.24), (133.86, 34.22), (133.87, 34.18),
+        (133.81, 34.16), (133.74, 34.18),
+    ],
+    [
+        (133.82, 34.29), (133.89, 34.31), (133.96, 34.29), (133.97, 34.25),
+        (133.91, 34.23), (133.84, 34.25),
+    ],
+    # Kurahashijima and nearby islands south of Hiroshima.
+    [
+        (132.45, 34.02), (132.52, 34.04), (132.59, 34.02), (132.60, 33.98),
+        (132.54, 33.96), (132.47, 33.98),
+    ],
+    [
+        (132.67, 34.03), (132.73, 34.05), (132.79, 34.03), (132.80, 33.99),
+        (132.74, 33.97), (132.69, 33.99),
+    ],
+    [
+        (132.83, 34.00), (132.89, 34.02), (132.95, 34.00), (132.96, 33.96),
+        (132.90, 33.94), (132.85, 33.96),
+    ],
+    # Islands west of Shikoku and in the Bungo Channel.
+    [
+        (132.10, 33.73), (132.16, 33.76), (132.22, 33.74), (132.24, 33.70),
+        (132.18, 33.68), (132.12, 33.69),
+    ],
+    [
+        (132.33, 33.88), (132.39, 33.90), (132.45, 33.88), (132.46, 33.84),
+        (132.40, 33.82), (132.35, 33.84),
+    ],
+    # Ise Bay islands and the east-facing mainland coast.
+    [
+        (136.55, 34.40), (136.62, 34.42), (136.68, 34.40), (136.69, 34.36),
+        (136.63, 34.34), (136.57, 34.36),
+    ],
+    [
+        (136.78, 34.30), (136.84, 34.32), (136.89, 34.30), (136.90, 34.26),
+        (136.85, 34.24), (136.80, 34.26),
+    ],
+]
+
+
+# Small island groups are represented as ellipses centered on approximate
+# known positions. Radii are in degrees; these are not cartographic outlines.
+ISLAND_ELLIPSES = [
+    # Tsushima, Iki, and nearby strait islands.
+    (129.30, 34.55, 0.095, 0.22),
+    (129.70, 33.83, 0.11, 0.09),
+    (130.05, 33.87, 0.025, 0.025),
+    # Northern Kyushu and the Suo-nada.
+    (130.22, 33.95, 0.035, 0.025),
+    (130.53, 33.95, 0.025, 0.018),
+    (131.00, 33.86, 0.045, 0.035),
+    (131.25, 33.90, 0.025, 0.02),
+    # Western Inland Sea islands.
+    (131.75, 33.98, 0.035, 0.025),
+    (131.92, 34.02, 0.04, 0.025),
+    (132.12, 34.10, 0.035, 0.025),
+    (132.28, 34.11, 0.03, 0.02),
+    (132.47, 34.12, 0.04, 0.025),
+    (132.63, 34.16, 0.04, 0.025),
+    (132.77, 34.20, 0.025, 0.02),
+    # Geiyo island belt.
+    (132.93, 34.18, 0.07, 0.045),
+    (133.04, 34.08, 0.055, 0.035),
+    (133.13, 34.24, 0.075, 0.045),
+    (133.20, 34.13, 0.065, 0.04),
+    (133.28, 34.31, 0.07, 0.04),
+    (133.34, 34.19, 0.075, 0.04),
+    (133.43, 34.27, 0.065, 0.04),
+    (133.48, 34.12, 0.07, 0.04),
+    (133.57, 34.31, 0.07, 0.04),
+    (133.62, 34.18, 0.065, 0.04),
+    (133.73, 34.35, 0.07, 0.04),
+    (133.77, 34.22, 0.07, 0.04),
+    (133.88, 34.29, 0.07, 0.04),
+    # Islands around Hiroshima Bay and western Shikoku.
+    (132.45, 34.02, 0.05, 0.035),
+    (132.63, 34.04, 0.055, 0.035),
+    (132.82, 34.00, 0.05, 0.03),
+    (132.16, 33.73, 0.045, 0.03),
+    (132.37, 33.87, 0.045, 0.03),
+    (132.61, 33.91, 0.035, 0.025),
+    # Islands in Harima-nada and Osaka Bay.
+    (134.10, 34.34, 0.035, 0.025),
+    (134.46, 34.28, 0.025, 0.02),
+    (134.62, 34.31, 0.025, 0.02),
+    (134.73, 34.48, 0.025, 0.02),
+    (134.99, 34.39, 0.02, 0.02),
+    (135.06, 34.35, 0.025, 0.02),
+    # Ise Bay and its mouth.
+    (136.62, 34.39, 0.04, 0.03),
+    (136.83, 34.29, 0.035, 0.025),
+]
+
+
+def point_in_polygon(lon: float, lat: float, polygon) -> bool:
+    """Return whether a point lies inside a polygon using ray casting."""
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if (yi > lat) != (yj > lat):
+            crossing_lon = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < crossing_lon:
+                inside = not inside
+        j = i
+    return inside
+
+
+def is_land(lon: float, lat: float) -> bool:
+    for polygon in LAND_POLYGONS:
+        if point_in_polygon(lon, lat, polygon):
+            return True
+
+    # Ellipse tests use a longitude correction suitable for these latitudes.
+    cos_lat = math.cos(math.radians(lat))
+    for center_lon, center_lat, radius_lon, radius_lat in ISLAND_ELLIPSES:
+        dx = (lon - center_lon) * cos_lat / max(cos_lat, 1e-9)
+        dy = lat - center_lat
+        if (dx / radius_lon) ** 2 + (dy / radius_lat) ** 2 <= 1.0:
+            return True
+    return False
+
+
+def main() -> None:
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    longitudes = WEST + np.arange(COLS, dtype=np.float64) * STEP
+    latitudes = NORTH - np.arange(ROWS, dtype=np.float64) * STEP
+
+    # Each pixel is classified at its sample coordinate, with no area averaging.
+    matrix = np.zeros((ROWS, COLS), dtype=np.uint8)
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            matrix[row, col] = 1 if is_land(float(lon), float(lat)) else 0
+
+    csv_path = output_dir / "candidate.csv"
+    with csv_path.open("w", newline="", encoding="ascii") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # Pillow uses black for 0 (water) and white for 1 (land).
+    image = Image.fromarray(matrix * 255, mode="L")
+    image.save(output_dir / "candidate.png")
+
+    enlarged = image.resize(
+        (COLS * 8, ROWS * 8),
+        resample=Image.Resampling.NEAREST,
+    )
+    enlarged.save(output_dir / "candidate_8x.png")
+
+    # Validate dimensions, values, CSV shape, colors, and nearest-neighbor scaling.
+    assert matrix.shape == (64, 253)
+    assert int(matrix.size) == 16192
+    assert set(np.unique(matrix).tolist()) <= {0, 1}
+
+    with csv_path.open("r", newline="", encoding="ascii") as handle:
+        csv_rows = list(csv.reader(handle))
+    assert len(csv_rows) == 64
+    assert all(len(row) == 253 for row in csv_rows)
+    assert all(value in {"0", "1"} for row in csv_rows for value in row)
+
+    assert image.size == (253, 64)
+    assert set(image.getdata()) <= {0, 255}
+    assert enlarged.size == (2024, 512)
+    assert set(enlarged.getdata()) <= {0, 255}
+
+    # Exact nearest-neighbor replication check.
+    expected = image.resize((2024, 512), resample=Image.Resampling.NEAREST)
+    assert np.array_equal(np.asarray(enlarged), np.asarray(expected))
+
+    print(f"Validated {matrix.shape[0]}x{matrix.shape[1]} matrix ({matrix.size} values).")
+    print(f"Wrote {csv_path}, outputs/candidate.png, and outputs/candidate_8x.png.")
+
+
+if __name__ == "__main__":
+    main()

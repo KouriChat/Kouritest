@@ -1,0 +1,31 @@
+{
+  "run_id": "20261027-121631_gpt-6-sol_seto_g2_08e32754",
+  "channel": "E",
+  "batch_id": "batch-12",
+  "started_at": "2026-10-27T12:16:31+08:00",
+  "finished_at": "2026-10-27T13:01:34+08:00",
+  "duration_sec": 2702.9,
+  "status": "failed",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": 1,
+  "model": "gpt-6-sol",
+  "model_display": "GPT 6 Sol",
+  "task": "seto",
+  "task_label": "濑户内海 2/63°",
+  "group": 2,
+  "prompt_sha256": "551d6fb3df8fe61af981ea454ba6fed3f898405e2c81a6cf0981578386d8f3c1",
+  "error": "URLError: <urlopen error _ssl.c:993: The handshake operation timed out>",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261027-121631_gpt-6-sol_seto_g2_08e32754/script.py",
+    "last_message.txt": "runs/20261027-121631_gpt-6-sol_seto_g2_08e32754/last_message.txt"
+  }
+}

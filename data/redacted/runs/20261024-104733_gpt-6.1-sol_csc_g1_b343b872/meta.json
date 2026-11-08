@@ -1,0 +1,32 @@
+{
+  "run_id": "20261024-104733_gpt-6.1-sol_csc_g1_b343b872",
+  "channel": "OR",
+  "batch_id": "batch-04",
+  "started_at": "2026-10-24T10:47:33+08:00",
+  "finished_at": "2026-10-24T11:13:03+08:00",
+  "duration_sec": 1529.8,
+  "status": "failed",
+  "returncode": 403,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": null,
+  "model": "openai/gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "csc",
+  "task_label": "南海 0.2°",
+  "group": 1,
+  "prompt_sha256": "fc65ca27be0c335304b30e9ae82817db140b00faa8ef3482c12bce3828360aea",
+  "error": "HTTPError 403: Forbidden",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261024-104733_gpt-6.1-sol_csc_g1_b343b872/script.py",
+    "last_message.txt": "runs/20261024-104733_gpt-6.1-sol_csc_g1_b343b872/last_message.txt",
+    "response_error.txt": "runs/20261024-104733_gpt-6.1-sol_csc_g1_b343b872/response_error.txt"
+  }
+}

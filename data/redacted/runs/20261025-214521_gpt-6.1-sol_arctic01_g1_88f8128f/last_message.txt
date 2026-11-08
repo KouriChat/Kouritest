@@ -1,0 +1,133 @@
+下面脚本用手写的近似多边形和射线法判断采样点；结果是规则计算得到的近似图，不是逐点独立判断。运行依赖为 Python、NumPy 和 Pillow。脚本会生成 CSV、原始 PNG 和最近邻放大 PNG。
+
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+
+# 手工近似的岛屿轮廓，坐标为 (经度, 纬度)，西经使用负数。
+# 仅覆盖本任务框内可能出现的主要陆地；不读取或查询外部地图。
+LAND_POLYGONS = [
+    # 维多利亚岛北部及西北部近似轮廓
+    [
+        (-110.0, 71.65), (-108.5, 72.15), (-107.5, 72.60),
+        (-106.8, 73.15), (-105.5, 73.65), (-104.3, 74.05),
+        (-102.8, 74.20), (-101.4, 74.05), (-100.2, 73.85),
+        (-99.0, 73.55), (-97.8, 73.25), (-97.0, 72.85),
+        (-97.3, 72.25), (-98.5, 71.75), (-100.2, 71.35),
+        (-102.0, 71.10), (-104.0, 71.10), (-106.0, 71.25),
+        (-108.0, 71.35), (-109.5, 71.50),
+    ],
+    # 梅尔维尔岛东部近似轮廓（靠近本框西缘）
+    [
+        (-109.2, 75.15), (-108.2, 74.95), (-107.2, 74.90),
+        (-106.2, 75.00), (-105.3, 75.25), (-104.6, 75.55),
+        (-104.3, 75.95), (-104.5, 76.35), (-105.0, 76.70),
+        (-105.8, 76.95), (-106.8, 77.05), (-107.8, 76.85),
+        (-108.7, 76.50), (-109.2, 76.05), (-109.4, 75.60),
+    ],
+    # 梅尔维尔岛附近若干小岛的粗略轮廓
+    [
+        (-105.00, 75.15), (-104.75, 75.20), (-104.62, 75.38),
+        (-104.80, 75.48), (-105.00, 75.38),
+    ],
+    [
+        (-105.00, 76.92), (-104.78, 76.96), (-104.62, 77.10),
+        (-104.80, 77.18), (-105.00, 77.12),
+    ],
+    # 维多利亚岛附近小岛（粗略）
+    [
+        (-105.0, 73.55), (-104.75, 73.60), (-104.60, 73.78),
+        (-104.82, 73.88), (-105.0, 73.78),
+    ],
+    [
+        (-101.0, 73.75), (-100.72, 73.78), (-100.60, 73.94),
+        (-100.82, 74.02), (-101.0, 73.93),
+    ],
+]
+
+
+def point_in_polygon(lon, lat, polygon):
+    """射线法点判定；落在轮廓边界上的点视为陆地。"""
+    inside = False
+    n = len(polygon)
+    eps = 1e-10
+
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+
+        # 共线且位于线段范围内：按陆地处理
+        cross = (lon - x1) * (y2 - y1) - (lat - y1) * (x2 - x1)
+        if abs(cross) <= eps:
+            if (min(x1, x2) - eps <= lon <= max(x1, x2) + eps
+                    and min(y1, y2) - eps <= lat <= max(y1, y2) + eps):
+                return True
+
+        # 水平射线与多边形边的相交奇偶规则
+        if (y1 > lat) != (y2 > lat):
+            x_intersect = x1 + (lat - y1) * (x2 - x1) / (y2 - y1)
+            if lon < x_intersect:
+                inside = not inside
+
+    return inside
+
+
+def classify(lon, lat):
+    return int(any(point_in_polygon(lon, lat, poly)
+                   for poly in LAND_POLYGONS))
+
+
+def main():
+    out_dir = Path("outputs")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # 行：79N 至 73N；列：105W 至 81W，步长均为 0.1°。
+    latitudes = [79.0 - 0.1 * i for i in range(61)]
+    longitudes = [-105.0 + 0.1 * j for j in range(241)]
+
+    matrix = np.zeros((61, 241), dtype=np.uint8)
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            matrix[row, col] = classify(lon, lat)
+
+    assert matrix.shape == (61, 241)
+    assert int(matrix.size) == 14701
+    assert set(np.unique(matrix)).issubset({0, 1})
+
+    csv_path = out_dir / "candidate.csv"
+    with csv_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # 1=陆地白色，0=水域黑色
+    pixels = matrix * 255
+    image = Image.fromarray(pixels, mode="L")
+    image.save(out_dir / "candidate.png")
+
+    enlarged = image.resize((241 * 8, 61 * 8), resample=Image.Resampling.NEAREST)
+    enlarged.save(out_dir / "candidate_8x.png")
+
+    # 检查 CSV 行列数、值域和图片尺寸/像素值
+    with csv_path.open("r", newline="", encoding="utf-8") as f:
+        rows = list(csv.reader(f))
+    assert len(rows) == 61
+    assert all(len(row) == 241 for row in rows)
+    assert all(value in {"0", "1"} for row in rows for value in row)
+
+    assert image.size == (241, 61)
+    assert set(image.getdata()).issubset({0, 255})
+    assert enlarged.size == (1928, 488)
+    assert set(enlarged.getdata()).issubset({0, 255})
+
+    print(f"已生成并验证 {matrix.shape[0]}×{matrix.shape[1]} 矩阵，共 {matrix.size} 个值。")
+    print(f"文件：{csv_path}, {out_dir / 'candidate.png'}, "
+          f"{out_dir / 'candidate_8x.png'}")
+
+
+if __name__ == "__main__":
+    main()
+```

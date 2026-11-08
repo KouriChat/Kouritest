@@ -1,0 +1,61 @@
+{
+  "formal_attempts": 10,
+  "status": {
+    "ok": 4,
+    "partial": 6
+  },
+  "arms": {
+    "H": 2,
+    "H-sham": 2,
+    "L": 6
+  },
+  "tasks": {
+    "seto": 4,
+    "dzh": 1,
+    "global": 2,
+    "arctic01": 1,
+    "csc": 2
+  },
+  "prompt_hashes_by_task": {
+    "global": [
+      "3b29f0597bf52e8706872573ef54a081c777de4a7d6ad8268514209bffa9dd12"
+    ],
+    "csc": [
+      "fc65ca27be0c335304b30e9ae82817db140b00faa8ef3482c12bce3828360aea"
+    ],
+    "dzh": [
+      "ed60d2d0403da116ee920e35b57d8eca0509572e4331d15e0459b831ea2f9894"
+    ],
+    "seto": [
+      "551d6fb3df8fe61af981ea454ba6fed3f898405e2c81a6cf0981578386d8f3c1"
+    ],
+    "arctic01": [
+      "205d51ed38107ba41e78ddad7dfa494a67a168460679facc9216349cc5498684"
+    ],
+    "hecate": []
+  },
+  "effort_by_arm": {
+    "H": [
+      "high"
+    ],
+    "L": [
+      "low"
+    ],
+    "H-sham": [
+      "high"
+    ]
+  },
+  "backend_by_arm": {
+    "H": [
+      "api"
+    ],
+    "L": [
+      "api"
+    ],
+    "H-sham": [
+      "api"
+    ]
+  },
+  "observed_response_cost_usd": null,
+  "cost_observation_n": 0
+}

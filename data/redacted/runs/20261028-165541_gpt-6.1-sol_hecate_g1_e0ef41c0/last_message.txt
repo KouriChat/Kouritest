@@ -1,0 +1,130 @@
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+ROWS = 127
+COLS = 127
+STEP = 2.0 / 126.0
+OUT = Path("outputs")
+
+
+def contains_points(lons, lats, polygon):
+    """Ray-casting point-in-polygon test; polygon vertices are (lon, lat)."""
+    inside = np.zeros(lons.shape, dtype=bool)
+    for i, (x1, y1) in enumerate(polygon):
+        x2, y2 = polygon[(i + 1) % len(polygon)]
+        crosses = (y1 > lats) != (y2 > lats)
+        x_cross = (x2 - x1) * (lats - y1) / (y2 - y1 + 1e-300) + x1
+        inside ^= crosses & (lons < x_cross)
+    return inside
+
+
+def ellipse(cx, cy, rx, ry, angle=0.0, vertices=32):
+    """Approximate a small island or reef with a hand-drawn ellipse."""
+    t = np.linspace(0.0, 2.0 * np.pi, vertices, endpoint=False)
+    c, s = np.cos(angle), np.sin(angle)
+    return [
+        (cx + rx * np.cos(a) * c - ry * np.sin(a) * s,
+         cy + rx * np.cos(a) * s + ry * np.sin(a) * c)
+        for a in t
+    ]
+
+
+# Approximate mainland shoreline, proceeding north to south. Land is east
+# of this line. The curve is deliberately schematic, not a surveyed coastline.
+shoreline = [
+    (-130.20, 55.00),
+    (-130.24, 54.85),
+    (-130.30, 54.70),
+    (-130.22, 54.58),
+    (-130.16, 54.48),
+    (-130.22, 54.38),
+    (-130.29, 54.30),
+    (-130.20, 54.18),
+    (-130.02, 54.08),
+    (-129.88, 53.98),
+    (-129.78, 53.84),
+    (-129.66, 53.70),
+    (-129.54, 53.55),
+    (-129.43, 53.38),
+    (-129.37, 53.20),
+    (-129.34, 53.00),
+]
+mainland = shoreline + [(-128.0, 53.0), (-128.0, 55.0)]
+
+# Eastern portions of Haida Gwaii that enter the western edge of the frame.
+# Most of Graham and Moresby islands lie west of 131W and are outside the grid.
+islands = [
+    # Graham Island's eastern coastal tip and nearby lowlands
+    [(-131.00, 54.10), (-131.02, 54.22), (-131.07, 54.33),
+     (-131.16, 54.39), (-131.28, 54.40), (-131.32, 54.30),
+     (-131.26, 54.20), (-131.18, 54.12), (-131.08, 54.08)],
+    # Louise Island and adjacent eastern inlets
+    [(-131.00, 53.82), (-131.04, 53.94), (-131.12, 54.02),
+     (-131.22, 54.00), (-131.27, 53.92), (-131.22, 53.84),
+     (-131.12, 53.78), (-131.04, 53.77)],
+    # Eastern Moresby Island
+    [(-131.00, 53.18), (-131.02, 53.36), (-131.06, 53.54),
+     (-131.12, 53.70), (-131.20, 53.79), (-131.30, 53.75),
+     (-131.34, 53.60), (-131.30, 53.42), (-131.23, 53.26),
+     (-131.13, 53.14), (-131.05, 53.12)],
+    # Small islands and reef clusters in the strait and along its mainland side
+    ellipse(-130.72, 54.82, 0.055, 0.12, -0.25),
+    ellipse(-130.55, 54.60, 0.045, 0.10, 0.30),
+    ellipse(-130.80, 54.42, 0.060, 0.13, -0.35),
+    ellipse(-130.57, 54.22, 0.055, 0.12, 0.15),
+    ellipse(-130.40, 54.03, 0.055, 0.12, -0.2),
+    ellipse(-130.20, 53.84, 0.070, 0.15, -0.3),
+    ellipse(-130.02, 53.62, 0.060, 0.13, 0.25),
+    ellipse(-129.84, 53.39, 0.070, 0.14, -0.35),
+    ellipse(-129.67, 53.16, 0.045, 0.09, 0.1),
+    ellipse(-130.95, 54.02, 0.025, 0.055),
+    ellipse(-130.88, 53.90, 0.025, 0.060, -0.2),
+    ellipse(-130.76, 53.72, 0.030, 0.065, 0.3),
+    ellipse(-130.61, 53.51, 0.030, 0.060, -0.2),
+    ellipse(-130.46, 53.29, 0.025, 0.055, 0.2),
+]
+
+latitudes = 55.0 - np.arange(ROWS, dtype=np.float64) * STEP
+longitudes = -131.0 + np.arange(COLS, dtype=np.float64) * STEP
+lons, lats = np.meshgrid(longitudes, latitudes)
+
+land = contains_points(lons, lats, mainland)
+for island in islands:
+    land |= contains_points(lons, lats, island)
+
+matrix = land.astype(np.uint8)
+
+OUT.mkdir(parents=True, exist_ok=True)
+
+with (OUT / "candidate.csv").open("w", newline="", encoding="ascii") as f:
+    writer = csv.writer(f, lineterminator="\n")
+    writer.writerows(matrix.tolist())
+
+# Land is white (255); water is black (0).
+image = Image.fromarray(matrix * 255, mode="L")
+image.save(OUT / "candidate.png")
+image.resize((COLS * 8, ROWS * 8), resample=Image.Resampling.NEAREST).save(
+    OUT / "candidate_8x.png"
+)
+
+# Validate the deliverables and CSV shape/content.
+assert matrix.shape == (127, 127)
+assert matrix.size == 16129
+assert set(np.unique(matrix)).issubset({0, 1})
+with (OUT / "candidate.csv").open("r", newline="", encoding="ascii") as f:
+    rows = list(csv.reader(f))
+assert len(rows) == 127
+assert all(len(row) == 127 and all(value in {"0", "1"} for value in row)
+           for row in rows)
+assert image.size == (127, 127)
+assert set(image.getdata()).issubset({0, 255})
+large = Image.open(OUT / "candidate_8x.png")
+assert large.size == (1016, 1016)
+assert set(large.getdata()).issubset({0, 255})
+```
+
+方法是用脚本中手写的近似大陆岸线、多边形岛屿和椭圆小岛规则，对每个采样点做点在多边形内判定；不是逐点独立推理，也未查询地理数据。运行依赖为 Python、NumPy 和 Pillow。脚本运行后会在 `outputs/` 下生成 CSV 和两张 PNG。

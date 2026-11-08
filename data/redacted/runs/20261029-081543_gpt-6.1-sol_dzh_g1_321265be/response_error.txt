@@ -1,0 +1,4 @@
+status=402
+url=[redacted-endpoint]
+reason=Payment Required
+body=

@@ -1,0 +1,30 @@
+{
+  "run_id": "20261028-091752_gpt-6.1-sol_arctic01_g1_5cc96a8c",
+  "channel": "E",
+  "batch_id": "batch-12",
+  "started_at": "2026-10-28T09:17:52+08:00",
+  "finished_at": "2026-10-28T09:21:24+08:00",
+  "duration_sec": 211.8,
+  "status": "failed",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": 5,
+  "model": "gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "arctic01",
+  "task_label": "北极航道 0.1°",
+  "group": 1,
+  "prompt_sha256": "205d51ed38107ba41e78ddad7dfa494a67a168460679facc9216349cc5498684",
+  "error": "RuntimeError: {\"type\": \"response.failed\", \"sequence_number\": 0, \"response\": {\"id\": \"resp_041586539e5d4ce1b30851dd2432fba4\", \"object\": \"response\", \"created_at\": 1793150484, \"model\": \"gpt-6.1-sol\", \"status\": \"failed\", \"output\": [], \"error\": {\"code\": \"upstream_error\", \"message\": \"Upstream service temporarily unavailable\"}}}",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "last_message.txt": "runs/20261028-091752_gpt-6.1-sol_arctic01_g1_5cc96a8c/last_message.txt"
+  }
+}

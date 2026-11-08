@@ -1,0 +1,194 @@
+下面的脚本用手写海岸线多边形和岛屿近似轮廓判定采样点，再由规则生成矩阵；不是对每个点逐一独立推理。仅需 `numpy` 和 `Pillow`，不联网也不读取外部地理数据。当前回复提供生成脚本；图片和 CSV 需运行脚本后生成。
+
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+
+# Vertices are (longitude, latitude), in WGS84 degrees.
+# These hand-drawn outlines are deliberately approximate.
+LAND_POLYGONS = [
+    # Mainland Southeast Asia and southern China, clipped to the requested box.
+    [
+        (98.5, 24.0), (110.5, 24.0), (112.5, 23.0), (114.0, 22.6),
+        (115.0, 22.8), (116.4, 23.4), (117.5, 22.7), (117.1, 21.5),
+        (115.3, 21.0), (113.8, 20.4), (111.5, 20.4), (110.0, 20.0),
+        (109.3, 21.5), (108.0, 21.7), (106.7, 22.0), (105.4, 22.9),
+        (104.0, 22.5), (102.5, 22.0), (101.2, 21.0), (99.6, 20.0),
+        (98.5, 18.0),
+    ],
+    # Vietnam, Cambodia, Laos, Thailand and the Malay Peninsula.
+    [
+        (98.5, 23.0), (105.0, 23.0), (106.5, 22.0), (108.0, 21.6),
+        (109.1, 21.2), (109.5, 20.0), (108.8, 18.7), (107.8, 17.0),
+        (106.9, 16.0), (107.3, 14.5), (108.0, 12.5), (109.0, 11.0),
+        (109.4, 9.5), (108.7, 8.5), (106.8, 8.6), (105.4, 9.8),
+        (104.2, 10.0), (103.2, 10.5), (102.0, 11.5), (101.0, 12.5),
+        (100.0, 13.0), (99.2, 15.0), (98.5, 17.5),
+    ],
+    # Western Thai-Malay coast and peninsula, including the southern tip.
+    [
+        (99.0, 17.0), (100.0, 16.0), (100.7, 14.0), (100.0, 12.5),
+        (99.5, 11.0), (99.8, 9.0), (100.2, 7.0), (101.0, 5.5),
+        (101.4, 4.0), (102.0, 2.5), (103.0, 1.0), (104.0, 0.0),
+        (104.5, -1.0), (103.0, -1.0), (101.5, 1.0), (100.5, 3.0),
+        (99.7, 5.0), (99.0, 8.0), (98.5, 12.0),
+    ],
+    # Hainan.
+    [
+        (108.55, 20.05), (109.25, 20.15), (110.45, 19.55),
+        (110.65, 18.85), (110.1, 18.15), (109.3, 18.15),
+        (108.65, 18.55), (108.55, 19.35),
+    ],
+    # Taiwan.
+    [
+        (120.0, 25.4), (121.4, 25.4), (121.8, 24.7), (121.5, 23.5),
+        (121.0, 22.0), (120.4, 21.8), (120.0, 23.0),
+    ],
+    # Sumatra.
+    [
+        (95.0, 5.8), (97.0, 5.5), (99.0, 3.8), (101.0, 2.0),
+        (103.0, 0.2), (104.2, -2.0), (105.0, -4.5), (104.0, -5.8),
+        (102.0, -5.5), (100.0, -3.8), (98.5, -1.5), (97.0, 1.0),
+        (95.0, 3.0),
+    ],
+    # Java.
+    [
+        (105.0, -5.8), (106.5, -6.0), (108.5, -6.8), (110.5, -7.5),
+        (112.8, -7.8), (114.5, -8.5), (113.5, -9.0), (110.0, -8.8),
+        (107.5, -8.2), (105.5, -7.5),
+    ],
+    # Borneo.
+    [
+        (108.0, 7.0), (109.5, 7.3), (111.0, 6.8), (113.0, 4.5),
+        (115.5, 4.0), (117.0, 1.5), (117.5, 0.0), (116.5, -2.0),
+        (114.5, -3.5), (112.0, -3.0), (110.0, -2.0), (109.0, 0.0),
+        (108.0, 2.0), (107.5, 4.0),
+    ],
+    # Palawan.
+    [
+        (117.0, 11.8), (118.0, 11.0), (118.5, 9.5), (118.0, 8.0),
+        (117.5, 6.5), (117.0, 7.0), (116.8, 9.0),
+    ],
+    # Luzon.
+    [
+        (119.5, 18.6), (120.5, 18.5), (121.5, 17.5), (122.0, 16.0),
+        (121.8, 14.5), (121.0, 13.0), (120.0, 13.5), (119.5, 15.0),
+        (119.0, 17.0),
+    ],
+    # Mindoro.
+    [(120.3, 13.5), (121.0, 13.3), (121.2, 12.5), (120.8, 12.0),
+     (120.2, 12.3)],
+    # Panay and Negros.
+    [(121.5, 11.8), (122.5, 11.8), (122.8, 10.8), (122.2, 10.3),
+     (121.6, 10.7)],
+    [(122.5, 10.8), (123.2, 10.7), (123.4, 9.5), (122.9, 9.0),
+     (122.5, 9.8)],
+    # Cebu.
+    [(123.4, 11.3), (123.8, 10.9), (123.8, 9.7), (123.5, 9.5),
+     (123.3, 10.4)],
+    # Samar and Leyte.
+    [(124.0, 12.0), (125.2, 11.8), (125.4, 10.5), (124.8, 10.0),
+     (124.0, 10.8)],
+    [(124.5, 11.2), (125.1, 10.8), (125.0, 9.8), (124.6, 9.5)],
+    # Mindanao.
+    [
+        (123.0, 9.8), (124.0, 8.5), (125.5, 7.8), (126.0, 6.5),
+        (125.5, 5.5), (124.0, 5.5), (123.0, 6.5), (122.0, 7.5),
+        (122.0, 8.8),
+    ],
+    # Andaman and Nicobar groups.
+    [(92.5, 13.5), (94.0, 13.3), (94.5, 12.0), (93.7, 11.5)],
+    [(92.5, 10.5), (93.2, 10.3), (93.5, 9.5), (92.8, 9.2)],
+    [(92.5, 8.0), (93.0, 7.8), (93.3, 7.0), (92.8, 6.8)],
+    # Natuna and Anambas islands.
+    [(107.3, 4.0), (108.0, 4.1), (108.2, 3.6), (107.5, 3.5)],
+    [(106.0, 3.0), (106.5, 3.0), (106.7, 2.6), (106.1, 2.5)],
+]
+
+# Gulf of Thailand is an indentation in the otherwise simplified mainland outline.
+WATER_POLYGONS = [
+    [
+        (100.0, 12.0), (101.0, 12.5), (102.0, 12.4), (103.0, 11.8),
+        (104.0, 11.0), (104.8, 10.5), (106.0, 10.0), (107.0, 9.5),
+        (108.0, 8.7), (109.0, 8.0), (109.0, 7.0), (107.5, 7.0),
+        (106.0, 8.0), (104.5, 8.7), (103.0, 9.0), (101.5, 10.0),
+        (100.5, 11.0),
+    ],
+]
+
+
+def on_segment(x, y, a, b, eps=1e-10):
+    cross = (x - a[0]) * (b[1] - a[1]) - (y - a[1]) * (b[0] - a[0])
+    if abs(cross) > eps:
+        return False
+    return (min(a[0], b[0]) - eps <= x <= max(a[0], b[0]) + eps
+            and min(a[1], b[1]) - eps <= y <= max(a[1], b[1]) + eps)
+
+
+def inside_polygon(x, y, polygon):
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if on_segment(x, y, (xi, yi), (xj, yj)):
+            return True
+        if (yi > y) != (yj > y):
+            crossing_x = (xj - xi) * (y - yi) / (yj - yi) + xi
+            if x < crossing_x:
+                inside = not inside
+        j = i
+    return inside
+
+
+def is_land(lon, lat):
+    land = any(inside_polygon(lon, lat, p) for p in LAND_POLYGONS)
+    if land and any(inside_polygon(lon, lat, p) for p in WATER_POLYGONS):
+        land = False
+    return land
+
+
+def main():
+    out = Path("outputs")
+    out.mkdir(parents=True, exist_ok=True)
+
+    latitudes = [23.0 - 0.2 * i for i in range(111)]
+    longitudes = [99.0 + 0.2 * j for j in range(141)]
+    matrix = np.array(
+        [[1 if is_land(lon, lat) else 0 for lon in longitudes]
+         for lat in latitudes],
+        dtype=np.uint8,
+    )
+
+    assert matrix.shape == (111, 141)
+    assert matrix.size == 15651
+    assert np.isin(matrix, (0, 1)).all()
+
+    with (out / "candidate.csv").open("w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # Array row zero is north; white=land and black=water.
+    image = Image.fromarray(matrix * 255, mode="L").convert("RGB")
+    assert image.size == (141, 111)
+    assert set(image.getdata()).issubset({(0, 0, 0), (255, 255, 255)})
+    image.save(out / "candidate.png")
+
+    enlarged = image.resize((141 * 8, 111 * 8), resample=Image.Resampling.NEAREST)
+    assert enlarged.size == (1128, 888)
+    enlarged.save(out / "candidate_8x.png")
+
+    # Validate the emitted CSV shape and alphabet.
+    with (out / "candidate.csv").open("r", newline="", encoding="ascii") as f:
+        rows = list(csv.reader(f))
+    assert len(rows) == 111
+    assert all(len(row) == 141 for row in rows)
+    assert all(value in {"0", "1"} for row in rows for value in row)
+
+
+if __name__ == "__main__":
+    main()
+```

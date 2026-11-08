@@ -1,0 +1,35 @@
+{
+  "source": {
+    "endpoint": "[redacted-endpoint]",
+    "from_ms": 1790654809000,
+    "to_ms": 1793246809000,
+    "pages": 64,
+    "page_size": 200,
+    "records": 12606
+  },
+  "overall": {
+    "first_request_at": "2026-10-22 22:34:09.924000+08:00",
+    "last_request_at": "2026-10-29 08:18:10.913000+08:00",
+    "estimated_cost_usd": 190.59748724,
+    "success": 11555,
+    "error": 891,
+    "incomplete": 98,
+    "canceled": 62
+  },
+  "or_baseline_window": {
+    "start": "2026-10-23 22:20:00+08:00",
+    "end": "2026-10-24 22:00:00+08:00",
+    "estimated_cost_usd": 164.3061452,
+    "requests": 2664
+  },
+  "known_shift_channel-OR": {
+    "start": "2026-10-29 08:00:00+08:00",
+    "end": "2026-10-29 10:30:00+08:00",
+    "requests": 6,
+    "estimated_cost_usd": 0.17134169999999999,
+    "successful_requests": 4,
+    "observed_402": 1,
+    "note": "The formal channel-F batch bypassed this channel-A endpoint and is not priced by these logs."
+  },
+  "caveat": "estimated cost is not an invoice; pricing_completeness is partial for several successful requests, and direct/subscription paths are not represented."
+}

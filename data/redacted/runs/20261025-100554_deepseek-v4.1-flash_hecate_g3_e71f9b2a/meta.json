@@ -1,0 +1,77 @@
+{
+  "run_id": "20261025-100554_deepseek-v4.1-flash_hecate_g3_e71f9b2a",
+  "channel": "A",
+  "batch_id": "batch-06",
+  "started_at": "2026-10-25T10:05:54+08:00",
+  "finished_at": "2026-10-25T10:09:46+08:00",
+  "duration_sec": 232.0,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": 0,
+  "model": "deepseek-v4.1-flash",
+  "model_display": "DeepSeek V4.1 Flash",
+  "task": "hecate",
+  "task_label": "赫卡特海峡 2/126°",
+  "group": 3,
+  "prompt_sha256": "50313a41be43a3e640dd6e88e129b3b69da3437e0866b9b2019d4c880add1322",
+  "error": "",
+  "score": {
+    "errors": 3371,
+    "correct": 12758,
+    "score": 12758,
+    "max_score": 16129,
+    "cells": 16129,
+    "accuracy_pct": 79.0997581995164,
+    "normalized": 12814.160828321657,
+    "extra_land": 1347,
+    "missing_land": 2024,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 65.496930993862,
+    "flip_horizontal_accuracy": 43.3504867009734
+  },
+  "map_metrics": {
+    "accuracy_pct": 79.099758,
+    "hss": 0.574161,
+    "boundary_f1_d0": 0.239345,
+    "boundary_f1_d1": 0.425331,
+    "boundary_f1_d2": 0.562548,
+    "narrow_water_keep": 0.309524,
+    "narrow_water_cells": 126,
+    "island_iou_median": 0.017336,
+    "island_iou_area_weighted": 0.595516,
+    "island_iou_ge50": 0.086957,
+    "component_recall": 0.130435,
+    "n_ref_components": 23,
+    "n_pred_components": 30,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {}
+}

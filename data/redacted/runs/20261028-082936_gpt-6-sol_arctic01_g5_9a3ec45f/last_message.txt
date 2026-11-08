@@ -1,0 +1,1 @@
+Tool call completed. The workspace command confirmed the current directory; `rg` is unavailable in this PowerShell environment.

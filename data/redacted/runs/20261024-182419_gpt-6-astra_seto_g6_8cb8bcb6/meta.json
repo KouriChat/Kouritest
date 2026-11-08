@@ -1,0 +1,32 @@
+{
+  "run_id": "20261024-182419_gpt-6-astra_seto_g6_8cb8bcb6",
+  "channel": "OR",
+  "batch_id": "batch-02",
+  "started_at": "2026-10-24T18:24:19+08:00",
+  "finished_at": "2026-10-24T18:56:08+08:00",
+  "duration_sec": 1908.9,
+  "status": "failed",
+  "returncode": 403,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 1,
+  "request_retries": 2,
+  "model": "openai/gpt-6-astra",
+  "model_display": "GPT 6 Astra",
+  "task": "seto",
+  "task_label": "濑户内海 2/63°",
+  "group": 6,
+  "prompt_sha256": "551d6fb3df8fe61af981ea454ba6fed3f898405e2c81a6cf0981578386d8f3c1",
+  "error": "HTTPError 403: Forbidden",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261024-182419_gpt-6-astra_seto_g6_8cb8bcb6/script.py",
+    "last_message.txt": "runs/20261024-182419_gpt-6-astra_seto_g6_8cb8bcb6/last_message.txt",
+    "response_error.txt": "runs/20261024-182419_gpt-6-astra_seto_g6_8cb8bcb6/response_error.txt"
+  }
+}

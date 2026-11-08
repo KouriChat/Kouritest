@@ -1,0 +1,1 @@
+apply_patch is writing empty files, so I'll build the script via the shell instead. Writing part 1:

@@ -1,0 +1,1 @@
+The first run caught a stitching error: the first part returned before the island rules were appended. I’m removing that premature return and rerunning the validation.

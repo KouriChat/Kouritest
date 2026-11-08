@@ -1,0 +1,345 @@
+下面脚本仅使用手写近似多边形规则判断采样点，不联网、不读取外部地图或地理数据库。规则先判断点是否落入任一陆地多边形，再用手写水道多边形扣除海峡和海湾。
+
+运行依赖：`Python 3`、`numpy`、`Pillow`。
+
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+
+# Coordinate frame: WGS84 decimal degrees.
+N_ROWS = 61
+N_COLS = 241
+LAT_NORTH = 79.0
+LON_WEST = -105.0
+STEP = 0.1
+
+
+def P(*points):
+    return tuple((float(lon), float(lat)) for lon, lat in points)
+
+
+# Approximate land polygons hand-written from geographic knowledge.
+# Coordinates are (longitude, latitude).
+LAND_POLYGONS = [
+    # Melville Island
+    P(
+        (-110.5, 78.45), (-107.0, 78.65), (-103.0, 78.60),
+        (-99.5, 78.35), (-96.7, 77.75), (-94.2, 76.85),
+        (-94.8, 75.75), (-98.0, 74.95), (-103.0, 74.35),
+        (-107.0, 74.70), (-109.8, 75.85)
+    ),
+
+    # Bathurst Island
+    P(
+        (-102.5, 77.10), (-99.5, 77.30), (-96.5, 76.65),
+        (-95.5, 75.75), (-97.1, 75.05), (-100.3, 75.15),
+        (-102.8, 75.85)
+    ),
+
+    # Cornwallis Island
+    P(
+        (-96.5, 76.20), (-93.5, 76.50), (-90.6, 75.85),
+        (-90.15, 74.95), (-93.0, 74.40), (-96.1, 74.80),
+        (-97.0, 75.55)
+    ),
+
+    # Devon Island
+    P(
+        (-94.5, 75.75), (-92.0, 77.10), (-89.0, 78.00),
+        (-85.0, 78.45), (-81.8, 78.15), (-79.45, 77.05),
+        (-79.75, 75.70), (-82.0, 74.60), (-86.0, 74.00),
+        (-90.0, 74.20), (-93.5, 74.90)
+    ),
+
+    # Southern Ellesmere Island
+    P(
+        (-96.0, 79.25), (-95.0, 78.30), (-92.0, 77.35),
+        (-88.5, 76.90), (-84.0, 77.10), (-79.2, 77.85),
+        (-78.8, 79.35)
+    ),
+
+    # Axel Heiberg Island
+    P(
+        (-97.2, 79.55), (-95.4, 80.00), (-91.7, 79.85),
+        (-88.4, 79.20), (-88.5, 78.10), (-91.0, 77.50),
+        (-94.2, 77.70), (-96.6, 78.25)
+    ),
+
+    # Ellef Ringnes Island
+    P(
+        (-105.0, 79.05), (-102.0, 79.45), (-98.0, 79.35),
+        (-96.0, 78.70), (-96.35, 77.90), (-99.0, 77.30),
+        (-103.0, 77.10), (-105.3, 77.75)
+    ),
+
+    # Amund Ringnes Island
+    P(
+        (-101.2, 79.10), (-98.2, 79.65), (-95.4, 79.25),
+        (-94.0, 78.50), (-95.5, 77.90), (-98.5, 77.80),
+        (-101.0, 78.25)
+    ),
+
+    # King Christian Island
+    P(
+        (-104.2, 78.30), (-102.0, 78.75), (-99.8, 78.40),
+        (-99.1, 77.70), (-101.0, 77.30), (-103.6, 77.50)
+    ),
+
+    # Lougheed Island
+    P(
+        (-99.8, 78.50), (-97.5, 78.85), (-95.5, 78.30),
+        (-95.0, 77.60), (-97.0, 77.20), (-99.0, 77.40)
+    ),
+
+    # Prince of Wales Island
+    P(
+        (-104.2, 74.70), (-101.0, 75.05), (-98.0, 74.80),
+        (-95.0, 74.20), (-95.5, 73.20), (-98.0, 72.70),
+        (-102.0, 72.60), (-104.5, 73.30)
+    ),
+
+    # Somerset Island
+    P(
+        (-97.6, 74.10), (-95.3, 74.50), (-91.5, 74.20),
+        (-88.3, 73.50), (-89.0, 72.80), (-92.0, 72.20),
+        (-96.5, 72.60), (-98.0, 73.40)
+    ),
+
+    # Northern Boothia Peninsula
+    P(
+        (-96.0, 73.00), (-94.0, 73.60), (-90.0, 73.50),
+        (-87.0, 73.00), (-87.2, 72.35), (-91.0, 72.15),
+        (-95.0, 72.35)
+    ),
+
+    # North Kent Island
+    P(
+        (-90.8, 76.90), (-89.0, 77.15), (-87.7, 76.65),
+        (-89.0, 76.20), (-90.8, 76.40)
+    ),
+
+    # Small islands in the central archipelago
+    P(
+        (-96.8, 76.95), (-95.8, 77.25), (-94.8, 76.85),
+        (-95.0, 76.35), (-96.2, 76.35)
+    ),
+    P(
+        (-92.0, 75.90), (-90.8, 76.15), (-90.1, 75.70),
+        (-90.7, 75.35), (-91.8, 75.45)
+    ),
+]
+
+
+# Approximate sea channels and fjords. These are subtracted from land.
+WATER_CUTS = [
+    # Byam Martin Channel and adjacent passages
+    P(
+        (-104.4, 78.30), (-101.0, 78.15), (-98.5, 77.65),
+        (-96.1, 76.80), (-96.2, 75.85), (-98.0, 75.40),
+        (-100.6, 75.70), (-102.9, 76.40), (-104.6, 77.20)
+    ),
+
+    # Channels among the Sverdrup Islands
+    P(
+        (-101.2, 78.55), (-99.0, 78.60), (-97.0, 78.20),
+        (-97.0, 77.55), (-99.0, 77.20), (-101.2, 77.65)
+    ),
+    P(
+        (-96.1, 79.45), (-93.8, 79.45), (-92.0, 78.90),
+        (-92.0, 78.25), (-94.0, 78.00), (-96.1, 78.40)
+    ),
+
+    # Jones Sound between Devon and Ellesmere
+    P(
+        (-95.0, 77.60), (-91.0, 77.20), (-86.0, 77.00),
+        (-81.0, 77.25), (-79.60, 77.55), (-80.0, 76.60),
+        (-85.0, 76.40), (-90.0, 76.40), (-94.0, 76.80)
+    ),
+
+    # Eureka Sound
+    P(
+        (-91.8, 79.25), (-89.0, 79.45), (-86.0, 79.05),
+        (-86.0, 78.10), (-88.8, 77.70), (-91.2, 78.05)
+    ),
+
+    # Austin Channel
+    P(
+        (-97.0, 75.65), (-95.0, 75.60), (-93.0, 75.20),
+        (-92.0, 74.80), (-94.0, 74.50), (-96.5, 74.80)
+    ),
+
+    # Barrow Strait and Lancaster Sound western continuation
+    P(
+        (-105.0, 74.70), (-101.0, 74.60), (-97.0, 74.40),
+        (-93.0, 74.20), (-89.0, 74.20), (-87.0, 73.80),
+        (-88.0, 73.30), (-92.0, 73.60), (-97.0, 73.80),
+        (-101.0, 74.00), (-105.0, 74.10)
+    ),
+
+    # Peel Sound
+    P(
+        (-98.0, 74.05), (-96.0, 74.05), (-94.0, 73.55),
+        (-95.0, 73.15), (-97.2, 73.35), (-99.0, 73.75)
+    ),
+
+    # Franklin Strait
+    P(
+        (-96.0, 73.10), (-94.0, 73.20), (-92.0, 72.90),
+        (-92.2, 72.45), (-94.5, 72.35), (-96.0, 72.65)
+    ),
+
+    # Narrow passages around Cornwallis and Devon
+    P(
+        (-91.8, 75.05), (-89.8, 75.20), (-88.5, 74.80),
+        (-89.0, 74.35), (-91.0, 74.35), (-92.3, 74.65)
+    ),
+]
+
+
+def compile_polygons(polygons):
+    compiled = []
+    for points in polygons:
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        compiled.append((
+            min(xs), max(xs), min(ys), max(ys), points
+        ))
+    return compiled
+
+
+LAND = compile_polygons(LAND_POLYGONS)
+WATER = compile_polygons(WATER_CUTS)
+
+
+def point_in_polygon(lon, lat, polygon):
+    min_x, max_x, min_y, max_y, points = polygon
+
+    if lon < min_x or lon > max_x or lat < min_y or lat > max_y:
+        return False
+
+    inside = False
+    j = len(points) - 1
+
+    for i in range(len(points)):
+        xi, yi = points[i]
+        xj, yj = points[j]
+
+        intersects = ((yi > lat) != (yj > lat))
+        if intersects:
+            crossing_lon = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < crossing_lon:
+                inside = not inside
+
+        j = i
+
+    return inside
+
+
+def is_land(lon, lat):
+    in_land = any(point_in_polygon(lon, lat, shape) for shape in LAND)
+    if not in_land:
+        return False
+
+    in_water_cut = any(point_in_polygon(lon, lat, shape) for shape in WATER)
+    return not in_water_cut
+
+
+def build_matrix():
+    result = np.zeros((N_ROWS, N_COLS), dtype=np.uint8)
+
+    for row in range(N_ROWS):
+        lat = LAT_NORTH - row * STEP
+        for col in range(N_COLS):
+            lon = LON_WEST + col * STEP
+            result[row, col] = 1 if is_land(lon, lat) else 0
+
+    return result
+
+
+def write_outputs(matrix):
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = output_dir / "candidate.csv"
+    png_path = output_dir / "candidate.png"
+    large_png_path = output_dir / "candidate_8x.png"
+
+    with csv_path.open("w", newline="", encoding="ascii") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
+        for row in matrix:
+            writer.writerow([int(value) for value in row])
+
+    # 0 -> black water, 1 -> white land.
+    image_array = matrix * 255
+    image = Image.fromarray(image_array, mode="L")
+    image.save(png_path)
+
+    enlarged = image.resize(
+        (N_COLS * 8, N_ROWS * 8),
+        resample=Image.Resampling.NEAREST
+    )
+    enlarged.save(large_png_path)
+
+    return csv_path, png_path, large_png_path
+
+
+def validate_outputs(matrix, csv_path, png_path, large_png_path):
+    assert matrix.shape == (61, 241)
+    assert matrix.size == 14701
+    assert set(np.unique(matrix)).issubset({0, 1})
+
+    with csv_path.open("r", newline="", encoding="ascii") as handle:
+        rows = list(csv.reader(handle))
+
+    assert len(rows) == 61
+    assert all(len(row) == 241 for row in rows)
+    assert all(value in {"0", "1"} for row in rows for value in row)
+    assert all(value != "" for row in rows for value in row)
+
+    with Image.open(png_path) as image:
+        assert image.size == (241, 61)
+        source = np.asarray(image.convert("L"))
+        assert set(np.unique(source)).issubset({0, 255})
+        assert np.array_equal(source, matrix * 255)
+
+    with Image.open(large_png_path) as image:
+        assert image.size == (1928, 488)
+        enlarged = np.asarray(image.convert("L"))
+        assert set(np.unique(enlarged)).issubset({0, 255})
+        assert np.array_equal(enlarged[::8, ::8], matrix * 255)
+
+        for row in range(61):
+            for col in range(241):
+                block = enlarged[
+                    row * 8:(row + 1) * 8,
+                    col * 8:(col + 1) * 8
+                ]
+                assert np.all(block == matrix[row, col] * 255)
+
+
+def main():
+    matrix = build_matrix()
+    csv_path, png_path, large_png_path = write_outputs(matrix)
+    validate_outputs(matrix, csv_path, png_path, large_png_path)
+
+    print("matrix:", matrix.shape, "values:", matrix.size)
+    print("csv:", csv_path)
+    print("png:", png_path)
+    print("png_8x:", large_png_path)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+运行后会生成：
+
+- `outputs/candidate.csv`
+- `outputs/candidate.png`
+- `outputs/candidate_8x.png`
+
+其中放大图由 `Image.Resampling.NEAREST` 生成，脚本末尾还会自动验证矩阵尺寸、CSV 内容、PNG 黑白像素和 8 倍最近邻块一致性。

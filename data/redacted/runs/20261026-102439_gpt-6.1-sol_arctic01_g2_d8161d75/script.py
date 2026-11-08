@@ -1,0 +1,188 @@
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+
+# Hand-written approximate coastlines, expressed as (longitude, latitude).
+LAND_POLYGONS = [
+    [
+        (-105.0, 78.15), (-104.0, 78.45), (-101.8, 78.55),
+        (-99.7, 78.35), (-98.0, 77.75), (-96.2, 77.35),
+        (-96.0, 76.35), (-97.0, 75.65), (-99.0, 75.25),
+        (-101.2, 74.90), (-103.5, 75.00), (-105.0, 75.25),
+    ],
+    [
+        (-103.0, 74.90), (-101.2, 75.00), (-99.6, 74.60),
+        (-97.3, 74.80), (-95.7, 74.20), (-95.5, 73.10),
+        (-97.0, 72.75), (-99.5, 72.70), (-101.8, 73.00),
+        (-103.3, 73.80),
+    ],
+    [
+        (-96.2, 74.20), (-94.5, 74.50), (-92.4, 74.20),
+        (-90.0, 73.50), (-89.0, 72.90), (-90.6, 72.40),
+        (-94.0, 72.30), (-96.2, 72.70), (-97.0, 73.40),
+    ],
+    [
+        (-96.3, 76.15), (-94.1, 76.45), (-91.6, 76.25),
+        (-90.4, 75.65), (-90.7, 74.95), (-92.4, 74.65),
+        (-94.2, 74.75), (-96.5, 75.25),
+    ],
+    [
+        (-100.2, 76.70), (-97.8, 76.90), (-95.2, 76.70),
+        (-93.5, 76.00), (-94.0, 75.30), (-96.0, 75.00),
+        (-98.7, 75.20), (-100.2, 75.80),
+    ],
+]
+LAND_POLYGONS.extend([
+    [
+        (-91.8, 78.20), (-88.8, 78.60), (-84.5, 78.30),
+        (-81.0, 78.10), (-81.0, 75.55), (-83.0, 75.35),
+        (-86.0, 75.40), (-88.6, 75.00), (-90.6, 75.30),
+        (-91.7, 76.20),
+    ],
+    [
+        (-89.0, 79.00), (-81.0, 79.00), (-81.0, 77.30),
+        (-82.2, 76.50), (-84.5, 76.30), (-87.0, 76.80),
+        (-89.0, 77.50),
+    ],
+    [
+        (-98.7, 79.00), (-96.2, 79.00), (-93.0, 79.00),
+        (-89.5, 79.00), (-89.5, 78.10), (-91.2, 77.30),
+        (-94.0, 77.30), (-97.0, 77.70),
+    ],
+    [
+        (-104.5, 79.00), (-99.0, 79.00), (-98.2, 78.50),
+        (-98.7, 77.70), (-100.5, 77.30), (-103.0, 77.50),
+        (-104.8, 78.20),
+    ],
+    [
+        (-101.5, 77.60), (-100.4, 78.10), (-98.3, 78.20),
+        (-96.5, 77.80), (-96.3, 77.10), (-98.0, 76.80),
+        (-100.4, 77.00),
+    ],
+    [
+        (-105.0, 77.60), (-103.0, 77.70), (-101.5, 77.20),
+        (-101.3, 76.60), (-102.4, 76.20), (-104.4, 76.40),
+        (-105.0, 76.80),
+    ],
+    [
+        (-99.6, 78.80), (-97.3, 78.90), (-95.7, 78.60),
+        (-95.2, 77.80), (-96.3, 77.40), (-98.0, 77.50),
+        (-99.7, 78.00),
+    ],
+    [
+        (-96.6, 77.10), (-95.1, 77.40), (-93.7, 77.00),
+        (-93.1, 76.40), (-94.4, 76.00), (-96.0, 76.10),
+    ],
+])
+LAND_POLYGONS.extend([
+    [
+        (-94.8, 78.00), (-93.5, 78.15), (-92.4, 77.85),
+        (-92.6, 77.20), (-93.8, 77.05), (-94.7, 77.35),
+    ],
+    [
+        (-91.6, 78.10), (-90.6, 78.30), (-89.8, 78.00),
+        (-90.0, 77.45), (-91.0, 77.35), (-91.7, 77.65),
+    ],
+    [
+        (-81.0, 73.80), (-80.4, 74.35), (-79.2, 74.55),
+        (-77.5, 74.35), (-76.2, 73.80), (-77.5, 73.20),
+        (-79.5, 73.05), (-81.0, 73.15),
+    ],
+    [
+        (-81.0, 73.00), (-80.4, 73.20), (-79.7, 72.95),
+        (-79.0, 72.70), (-79.4, 72.40), (-81.0, 72.40),
+    ],
+])
+
+
+def point_on_segment(x, y, x1, y1, x2, y2, eps=1e-9):
+    cross = (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1)
+    if abs(cross) > eps:
+        return False
+    return (
+        min(x1, x2) - eps <= x <= max(x1, x2) + eps
+        and min(y1, y2) - eps <= y <= max(y1, y2) + eps
+    )
+
+
+def point_in_polygon(x, y, polygon):
+    inside = False
+    j = len(polygon) - 1
+    for i in range(len(polygon)):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[j]
+        if point_on_segment(x, y, x1, y1, x2, y2):
+            return True
+        if (y1 > y) != (y2 > y):
+            intersection_x = (x2 - x1) * (y - y1) / (y2 - y1) + x1
+            if x < intersection_x:
+                inside = not inside
+        j = i
+    return inside
+
+
+def is_land(longitude, latitude):
+    return int(any(point_in_polygon(longitude, latitude, polygon)
+                   for polygon in LAND_POLYGONS))
+def build_matrix():
+    latitudes = [79.0 - 0.1 * row for row in range(61)]
+    longitudes = [-105.0 + 0.1 * col for col in range(241)]
+    matrix = np.zeros((61, 241), dtype=np.uint8)
+    for row, latitude in enumerate(latitudes):
+        for col, longitude in enumerate(longitudes):
+            matrix[row, col] = is_land(longitude, latitude)
+    return matrix
+
+
+def write_csv(matrix, path):
+    with path.open("w", encoding="ascii", newline="") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
+        for row in matrix:
+            writer.writerow(int(value) for value in row)
+
+
+def validate_csv(path):
+    with path.open("r", encoding="ascii", newline="") as handle:
+        rows = list(csv.reader(handle))
+    assert len(rows) == 61
+    assert all(len(row) == 241 for row in rows)
+    assert all(value in {"0", "1"} for row in rows for value in row)
+
+
+def write_images(matrix, original_path, enlarged_path):
+    pixels = (matrix * 255).astype(np.uint8)
+    original = Image.fromarray(pixels, mode="L")
+    assert original.size == (241, 61)
+    assert set(original.getdata()).issubset({0, 255})
+    original.save(original_path, format="PNG")
+    enlarged = original.resize((1928, 488), Image.Resampling.NEAREST)
+    assert enlarged.size == (1928, 488)
+    assert set(enlarged.getdata()).issubset({0, 255})
+    enlarged.save(enlarged_path, format="PNG")
+def main():
+    output_dir = Path.cwd() / "outputs"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    matrix = build_matrix()
+    assert matrix.shape == (61, 241)
+    assert matrix.size == 14701
+    assert set(np.unique(matrix).tolist()).issubset({0, 1})
+
+    csv_path = output_dir / "candidate.csv"
+    png_path = output_dir / "candidate.png"
+    enlarged_path = output_dir / "candidate_8x.png"
+
+    write_csv(matrix, csv_path)
+    validate_csv(csv_path)
+    write_images(matrix, png_path, enlarged_path)
+    print("matrix:", matrix.shape, "valid_values:", matrix.size)
+    print("csv:", csv_path)
+    print("png:", png_path, "size: 241x61")
+    print("png_8x:", enlarged_path, "size: 1928x488")
+
+
+if __name__ == "__main__":
+    main()

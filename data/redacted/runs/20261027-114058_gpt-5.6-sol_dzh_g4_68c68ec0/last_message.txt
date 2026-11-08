@@ -1,0 +1,1 @@
+Added `outputs/_part01.py` in one 50-line patch. It contains the grid setup, geometric helpers, and the hand-written Iberian Peninsula outline.

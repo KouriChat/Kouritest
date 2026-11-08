@@ -1,0 +1,77 @@
+{
+  "run_id": "20261026-220409_gpt-6-astra_arctic01_g5_347cb151",
+  "channel": "A",
+  "batch_id": "batch-06",
+  "started_at": "2026-10-26T22:04:09+08:00",
+  "finished_at": "2026-10-26T22:19:43+08:00",
+  "duration_sec": 933.3,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 2,
+  "request_retries": 2,
+  "model": "gpt-6-astra-codex",
+  "model_display": "GPT 6 Astra",
+  "task": "arctic01",
+  "task_label": "北极航道 0.1°",
+  "group": 5,
+  "prompt_sha256": "205d51ed38107ba41e78ddad7dfa494a67a168460679facc9216349cc5498684",
+  "error": "",
+  "score": {
+    "errors": 5866,
+    "correct": 8835,
+    "score": 8835,
+    "max_score": 14701,
+    "cells": 14701,
+    "accuracy_pct": 60.09795252023672,
+    "normalized": 9735.868308278348,
+    "extra_land": 2974,
+    "missing_land": 2892,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 51.17338956533569,
+    "flip_horizontal_accuracy": 50.84688116454663
+  },
+  "map_metrics": {
+    "accuracy_pct": 60.097953,
+    "hss": 0.197516,
+    "boundary_f1_d0": 0.229878,
+    "boundary_f1_d1": 0.396209,
+    "boundary_f1_d2": 0.517834,
+    "narrow_water_keep": 0.35461,
+    "narrow_water_cells": 141,
+    "island_iou_median": 0.005381,
+    "island_iou_area_weighted": 0.219243,
+    "island_iou_ge50": 0.029412,
+    "component_recall": 0.058824,
+    "n_ref_components": 34,
+    "n_pred_components": 12,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {}
+}

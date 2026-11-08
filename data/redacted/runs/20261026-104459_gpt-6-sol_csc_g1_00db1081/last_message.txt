@@ -1,0 +1,177 @@
+方法：使用脚本内手写的近似海岸线多边形和岛屿椭圆，逐个采样点判断是否落入陆地范围；不是逐点独立推理，也不读取外部地理数据。运行依赖为 Python、NumPy、Pillow。脚本会生成 CSV 和两张 PNG。
+
+```python
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+# Coordinates are (longitude, latitude), in decimal degrees.
+# These hand-written outlines are approximate geographic rules, not map data.
+LAND_POLYGONS = [
+    # Mainland Southeast Asia and southern China
+    [
+        (99, 23), (116.8, 23), (116.5, 22.6), (115.7, 22.4),
+        (115.2, 22.1), (114.5, 22.2), (113.8, 22.0), (113.3, 21.7),
+        (112.5, 21.5), (111.7, 21.4), (110.8, 20.9), (110.2, 20.2),
+        (109.6, 19.6), (108.9, 19.8), (108.2, 20.2), (107.6, 20.9),
+        (106.8, 21.4), (105.8, 21.5), (105.2, 20.5), (106.0, 18.4),
+        (107.0, 16.3), (108.0, 14.2), (108.8, 12.4), (109.2, 10.8),
+        (108.6, 9.5), (107.2, 9.0), (105.8, 9.0), (104.8, 9.5),
+        (104.0, 10.5), (103.2, 10.6), (102.5, 10.2), (102.0, 9.2),
+        (101.8, 8.1), (101.4, 6.8), (101.0, 5.5), (101.3, 4.0),
+        (102.0, 2.8), (103.0, 1.0), (101.8, 1.0), (101.0, 3.0),
+        (100.5, 5.0), (100.0, 7.0), (99.6, 9.0), (99.3, 11.0),
+        (99.2, 13.0), (99.0, 15.0), (99.0, 18.0), (99.0, 20.5),
+    ],
+    # Hainan
+    [
+        (108.6, 20.1), (109.2, 20.0), (110.0, 19.9), (110.6, 19.5),
+        (110.7, 19.0), (110.3, 18.3), (109.6, 18.2), (109.0, 18.5),
+        (108.6, 19.1),
+    ],
+    # Taiwan
+    [
+        (120.0, 25.3), (121.0, 25.3), (121.7, 24.6), (121.5, 23.6),
+        (121.0, 22.7), (120.5, 21.9), (120.0, 22.5), (119.9, 23.5),
+    ],
+    # Sumatra
+    [
+        (99.0, 5.5), (100.0, 5.7), (101.3, 4.8), (102.0, 3.5),
+        (103.0, 2.5), (104.5, 1.8), (105.5, 0.8), (105.8, -1.0),
+        (105.0, -3.0), (103.5, -4.5), (101.8, -5.5), (100.0, -5.5),
+        (98.5, -3.0), (97.5, 0.0), (98.0, 3.0),
+    ],
+    # Bangka and Belitung
+    [(105.0, -1.5), (106.0, -2.0), (106.2, -3.0), (105.4, -3.3), (104.8, -2.5)],
+    [(107.0, -2.5), (108.0, -2.7), (108.2, -3.3), (107.2, -3.5), (106.8, -3.0)],
+    # Java, clipped naturally by the requested latitude range
+    [
+        (105.0, -5.8), (107.0, -5.8), (109.0, -6.0), (111.0, -6.2),
+        (113.0, -6.8), (114.5, -7.8), (112.0, -8.0), (109.0, -7.8),
+        (106.0, -7.0),
+    ],
+    # Borneo
+    [
+        (109.0, 7.0), (110.5, 7.0), (112.0, 6.8), (113.5, 5.8),
+        (115.0, 5.0), (117.0, 4.5), (118.0, 3.0), (117.5, 1.5),
+        (116.0, 0.5), (114.5, 0.0), (113.0, -1.5), (111.0, -2.0),
+        (109.5, -1.0), (108.5, 1.0), (108.5, 3.5), (109.0, 5.0),
+    ],
+    # Palawan
+    [
+        (117.0, 11.8), (118.0, 11.5), (118.5, 10.0), (118.0, 8.5),
+        (117.0, 7.0), (116.0, 7.5), (116.5, 9.5),
+    ],
+    # Luzon
+    [
+        (119.8, 18.5), (121.0, 18.6), (122.0, 18.0), (122.2, 17.0),
+        (121.7, 16.0), (121.5, 15.0), (121.0, 14.0), (120.3, 14.0),
+        (120.0, 15.5), (119.7, 17.0),
+    ],
+    # Mindoro
+    [(120.3, 13.5), (121.0, 13.5), (121.2, 12.5), (120.7, 12.0), (120.2, 12.5)],
+    # Panay, Negros, Cebu and Bohol
+    [(121.5, 11.8), (122.7, 11.8), (122.8, 10.4), (121.7, 10.0), (121.2, 10.8)],
+    [(122.5, 10.8), (123.2, 10.8), (123.3, 9.5), (122.7, 9.3)],
+    [(123.5, 11.3), (124.0, 11.2), (124.0, 9.5), (123.6, 9.5)],
+    [(123.7, 10.0), (124.8, 9.8), (124.8, 9.3), (123.8, 9.3)],
+    # Samar and Leyte
+    [(124.0, 12.5), (125.3, 12.2), (125.2, 11.0), (124.5, 10.5), (124.0, 11.2)],
+    [(124.7, 11.2), (125.4, 11.0), (125.3, 9.7), (124.8, 9.5)],
+    # Mindanao
+    [
+        (122.0, 9.8), (123.0, 8.8), (124.5, 8.5), (125.5, 7.8),
+        (126.0, 6.8), (125.0, 6.0), (123.8, 6.0), (122.8, 6.5),
+        (122.0, 7.5), (121.5, 8.7),
+    ],
+    # Sulu islands
+    [(120.0, 6.2), (121.0, 6.0), (121.3, 5.5), (120.4, 5.4)],
+    [(121.5, 5.5), (122.5, 5.3), (122.8, 4.8), (121.8, 4.9)],
+    # Natuna islands
+    [(108.0, 4.0), (109.0, 4.2), (109.2, 3.5), (108.3, 3.2)],
+    # Anambas islands
+    [(105.5, 3.5), (106.5, 3.5), (106.7, 3.0), (105.8, 2.8)],
+]
+
+# Small islands and reefs represented by approximate elliptical footprints.
+# Values are longitude, latitude, east-west radius, north-south radius.
+ISLANDS = [
+    (104.3, 10.0, 0.08, 0.08),   # Phu Quoc
+    (103.9, 8.6, 0.05, 0.06),    # Con Dao
+    (109.0, 12.0, 0.06, 0.07),   # Ly Son
+    (111.6, 16.5, 0.05, 0.05),   # Paracel area
+    (112.3, 16.5, 0.05, 0.05),
+    (114.3, 11.8, 0.07, 0.07),   # Spratly area
+    (115.7, 10.4, 0.06, 0.07),
+    (116.7, 9.8, 0.06, 0.06),
+    (117.5, 8.8, 0.05, 0.06),
+    (118.0, 10.0, 0.05, 0.05),
+    (119.3, 5.8, 0.08, 0.08),    # Tawi-Tawi
+    (120.5, 6.0, 0.06, 0.06),
+    (119.5, 11.0, 0.05, 0.05),   # Cuyo
+    (122.0, 13.0, 0.05, 0.05),   # small Philippine islands
+    (122.5, 7.0, 0.05, 0.05),
+    (123.0, 5.5, 0.05, 0.05),
+    (124.0, 7.0, 0.04, 0.05),
+    (126.0, 9.0, 0.05, 0.05),
+    (121.5, 20.5, 0.08, 0.08),   # Batanes
+]
+
+
+def point_in_polygon(lon, lat, polygon):
+    """Ray-casting point test for a hand-written polygon."""
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if (yi > lat) != (yj > lat):
+            crossing_lon = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < crossing_lon:
+                inside = not inside
+        j = i
+    return inside
+
+
+def is_land(lon, lat):
+    for polygon in LAND_POLYGONS:
+        if point_in_polygon(lon, lat, polygon):
+            return True
+    for center_lon, center_lat, radius_lon, radius_lat in ISLANDS:
+        dx = (lon - center_lon) / radius_lon
+        dy = (lat - center_lat) / radius_lat
+        if dx * dx + dy * dy <= 1.0:
+            return True
+    return False
+
+
+def main():
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    latitudes = 23.0 - 0.2 * np.arange(111)
+    longitudes = 99.0 + 0.2 * np.arange(141)
+    matrix = np.zeros((111, 141), dtype=np.uint8)
+
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            matrix[row, col] = int(is_land(float(lon), float(lat)))
+
+    np.savetxt(output_dir / "candidate.csv", matrix, fmt="%d", delimiter=",")
+
+    # 0 is black water; 1 is white land.
+    image = Image.fromarray(matrix * 255, mode="L")
+    image.save(output_dir / "candidate.png")
+    enlarged = image.resize((141 * 8, 111 * 8), resample=Image.Resampling.NEAREST)
+    enlarged.save(output_dir / "candidate_8x.png")
+
+    assert matrix.shape == (111, 141)
+    assert int(matrix.size) == 15651
+    assert set(np.unique(matrix)).issubset({0, 1})
+    assert image.size == (141, 111)
+    assert enlarged.size == (1128, 888)
+
+
+if __name__ == "__main__":
+    main()
+```

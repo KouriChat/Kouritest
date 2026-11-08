@@ -1,0 +1,30 @@
+{
+  "run_id": "20261024-122754_gpt-6-astra_arctic01_g4_d3cb23bd",
+  "channel": "OR",
+  "batch_id": "batch-02",
+  "started_at": "2026-10-24T12:27:54+08:00",
+  "finished_at": "2026-10-24T12:27:54+08:00",
+  "duration_sec": 0.5,
+  "status": "failed",
+  "returncode": 403,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": null,
+  "model": "openai/gpt-6-astra",
+  "model_display": "GPT 6 Astra",
+  "task": "arctic01",
+  "task_label": "北极航道 0.1°",
+  "group": 4,
+  "prompt_sha256": "205d51ed38107ba41e78ddad7dfa494a67a168460679facc9216349cc5498684",
+  "error": "HTTPError 403: Forbidden",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "response_error.txt": "runs/20261024-122754_gpt-6-astra_arctic01_g4_d3cb23bd/response_error.txt"
+  }
+}

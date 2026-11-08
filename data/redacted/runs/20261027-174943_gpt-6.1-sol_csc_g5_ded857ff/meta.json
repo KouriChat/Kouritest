@@ -1,0 +1,84 @@
+{
+  "run_id": "20261027-174943_gpt-6.1-sol_csc_g5_ded857ff",
+  "channel": "E",
+  "batch_id": "batch-12",
+  "started_at": "2026-10-27T17:49:43+08:00",
+  "finished_at": "2026-10-27T17:59:18+08:00",
+  "duration_sec": 574.4,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 2,
+  "request_retries": 4,
+  "model": "gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "csc",
+  "task_label": "南海 0.2°",
+  "group": 5,
+  "prompt_sha256": "fc65ca27be0c335304b30e9ae82817db140b00faa8ef3482c12bce3828360aea",
+  "error": "",
+  "score": {
+    "errors": 368,
+    "correct": 15283,
+    "score": 15283,
+    "max_score": 15651,
+    "cells": 15651,
+    "accuracy_pct": 97.64871254232956,
+    "normalized": 15819.091431857389,
+    "extra_land": 266,
+    "missing_land": 102,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 62.724426554213785,
+    "flip_horizontal_accuracy": 51.53025365791323
+  },
+  "map_metrics": {
+    "accuracy_pct": 97.648713,
+    "hss": 0.945787,
+    "boundary_f1_d0": 0.814937,
+    "boundary_f1_d1": 0.965961,
+    "boundary_f1_d2": 0.984613,
+    "narrow_water_keep": 0.0,
+    "narrow_water_cells": 9,
+    "island_iou_median": 0.428571,
+    "island_iou_area_weighted": 0.914072,
+    "island_iou_ge50": 0.472222,
+    "component_recall": 0.555556,
+    "n_ref_components": 36,
+    "n_pred_components": 27,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {
+    "candidate.png": "runs/20261027-174943_gpt-6.1-sol_csc_g5_ded857ff/candidate.png",
+    "candidate_8x.png": "runs/20261027-174943_gpt-6.1-sol_csc_g5_ded857ff/candidate_8x.png",
+    "candidate.csv": "runs/20261027-174943_gpt-6.1-sol_csc_g5_ded857ff/candidate.csv",
+    "diff.png": "runs/20261027-174943_gpt-6.1-sol_csc_g5_ded857ff/diff.png",
+    "script.py": "runs/20261027-174943_gpt-6.1-sol_csc_g5_ded857ff/script.py",
+    "last_message.txt": "runs/20261027-174943_gpt-6.1-sol_csc_g5_ded857ff/last_message.txt"
+  }
+}

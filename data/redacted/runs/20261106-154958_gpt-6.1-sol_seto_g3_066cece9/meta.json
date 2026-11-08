@@ -1,0 +1,30 @@
+{
+  "run_id": "20261106-154958_gpt-6.1-sol_seto_g3_066cece9",
+  "channel": "A",
+  "batch_id": "batch-07",
+  "started_at": "2026-11-06T15:49:58+08:00",
+  "finished_at": "2026-11-06T16:02:58+08:00",
+  "duration_sec": 779.2,
+  "status": "failed",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": 1,
+  "model": "gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "seto",
+  "task_label": "濑户内海 2/63°",
+  "group": 3,
+  "prompt_sha256": "551d6fb3df8fe61af981ea454ba6fed3f898405e2c81a6cf0981578386d8f3c1",
+  "error": "RuntimeError: {\"type\": \"error\", \"sequence_number\": 0, \"code\": \"upstream_stream_read_error\", \"message\": \"Upstream response stream was interrupted\", \"param\": null}",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261106-154958_gpt-6.1-sol_seto_g3_066cece9/script.py"
+  }
+}

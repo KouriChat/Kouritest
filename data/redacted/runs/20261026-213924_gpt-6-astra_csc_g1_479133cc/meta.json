@@ -1,0 +1,77 @@
+{
+  "run_id": "20261026-213924_gpt-6-astra_csc_g1_479133cc",
+  "channel": "A",
+  "batch_id": "batch-06",
+  "started_at": "2026-10-26T21:39:24+08:00",
+  "finished_at": "2026-10-26T21:48:25+08:00",
+  "duration_sec": 541.5,
+  "status": "ok",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 2,
+  "request_retries": 3,
+  "model": "gpt-6-astra-codex",
+  "model_display": "GPT 6 Astra",
+  "task": "csc",
+  "task_label": "南海 0.2°",
+  "group": 1,
+  "prompt_sha256": "fc65ca27be0c335304b30e9ae82817db140b00faa8ef3482c12bce3828360aea",
+  "error": "",
+  "score": {
+    "errors": 1795,
+    "correct": 13856,
+    "score": 13856,
+    "max_score": 15651,
+    "cells": 15651,
+    "accuracy_pct": 88.53108427576512,
+    "normalized": 14342.03565267395,
+    "extra_land": 1004,
+    "missing_land": 791,
+    "orientation_ok": true,
+    "flip_vertical_accuracy": 60.890677911954505,
+    "flip_horizontal_accuracy": 53.35122356398953
+  },
+  "map_metrics": {
+    "accuracy_pct": 88.531084,
+    "hss": 0.736278,
+    "boundary_f1_d0": 0.475636,
+    "boundary_f1_d1": 0.637718,
+    "boundary_f1_d2": 0.719574,
+    "narrow_water_keep": 0.333333,
+    "narrow_water_cells": 9,
+    "island_iou_median": 0.004578,
+    "island_iou_area_weighted": 0.754302,
+    "island_iou_ge50": 0.083333,
+    "component_recall": 0.194444,
+    "n_ref_components": 36,
+    "n_pred_components": 13,
+    "config": {
+      "component_min_cells": 2,
+      "component_iou_match": 0.3,
+      "boundary_tolerances": [
+        0,
+        1,
+        2
+      ],
+      "narrow_water_radius": 2
+    }
+  },
+  "validation": {
+    "status": "ok",
+    "checks": {
+      "png_present": true,
+      "png_exact_shape": true,
+      "png_binary": true,
+      "csv_present": true,
+      "csv_agrees_with_png": true,
+      "upscale_present": true,
+      "upscale_exact_nn": true,
+      "orientation": true
+    }
+  },
+  "files": {}
+}

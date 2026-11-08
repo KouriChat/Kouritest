@@ -1,0 +1,1 @@
+apply_patch 在此环境中只创建了空文件，我改用 exec_command 直接写入脚本内容。

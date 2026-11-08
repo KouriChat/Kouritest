@@ -1,0 +1,121 @@
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+# Hand-estimated land outlines, in (longitude, latitude). These are approximate
+# geographic rules, not observations or independent judgments for each sample.
+# The mainland polygons trace the coast and major fjord openings; the island
+# polygons represent the portions of Haida Gwaii inside the requested bounds.
+MAINLAND = [
+    [
+        (-129.0, 55.0), (-130.33, 55.0), (-130.25, 54.90),
+        (-130.36, 54.81), (-130.20, 54.75), (-130.17, 54.65),
+        (-130.28, 54.57), (-130.12, 54.48), (-130.06, 54.37),
+        (-130.20, 54.27), (-130.02, 54.17), (-130.08, 54.07),
+        (-129.92, 53.98), (-130.04, 53.88), (-129.91, 53.77),
+        (-130.00, 53.66), (-129.86, 53.54), (-129.95, 53.43),
+        (-129.80, 53.31), (-129.90, 53.20), (-129.76, 53.08),
+        (-129.82, 53.0), (-129.0, 53.0),
+    ],
+    # Coastal inlets and fjords cut into the otherwise continuous mainland.
+    [
+        (-130.32, 54.93), (-130.11, 54.91), (-130.02, 54.86),
+        (-130.12, 54.81), (-130.31, 54.82),
+    ],
+    [
+        (-130.22, 54.69), (-130.05, 54.67), (-129.96, 54.61),
+        (-130.02, 54.54), (-130.22, 54.56),
+    ],
+    [
+        (-130.17, 54.40), (-130.00, 54.38), (-129.91, 54.32),
+        (-129.96, 54.25), (-130.17, 54.28),
+    ],
+    [
+        (-130.07, 54.10), (-129.91, 54.08), (-129.82, 54.02),
+        (-129.88, 53.95), (-130.03, 53.98),
+    ],
+    [
+        (-129.97, 53.81), (-129.81, 53.79), (-129.73, 53.73),
+        (-129.78, 53.66), (-129.94, 53.69),
+    ],
+    [
+        (-129.92, 53.49), (-129.76, 53.47), (-129.68, 53.41),
+        (-129.73, 53.34), (-129.89, 53.37),
+    ],
+]
+
+# Graham Island and Moresby Island are mostly west of the frame. These outlines
+# include their eastern coastal margins where they approach 131 degrees west.
+ISLANDS = [
+    [
+        (-131.0, 54.98), (-131.0, 54.70), (-131.025, 54.58),
+        (-131.055, 54.47), (-131.035, 54.35), (-131.075, 54.23),
+        (-131.12, 54.13), (-131.0, 54.10), (-131.0, 54.98),
+    ],
+    [
+        (-131.0, 53.95), (-131.0, 53.55), (-131.035, 53.42),
+        (-131.02, 53.30), (-131.075, 53.20), (-131.0, 53.15),
+        (-131.0, 53.95),
+    ],
+    # Small coastal islands and islets, represented as approximate polygons.
+    [
+        (-131.0, 54.06), (-130.97, 54.04), (-130.96, 54.00),
+        (-131.0, 53.99),
+    ],
+    [
+        (-131.0, 53.12), (-130.97, 53.10), (-130.96, 53.06),
+        (-131.0, 53.05),
+    ],
+]
+
+
+def inside_polygon(x, y, polygon):
+    """Ray-crossing point-in-polygon test."""
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if (yi > y) != (yj > y):
+            crossing_x = (xj - xi) * (y - yi) / (yj - yi) + xi
+            if x < crossing_x:
+                inside = not inside
+        j = i
+    return inside
+
+
+def main():
+    out = Path("outputs")
+    out.mkdir(parents=True, exist_ok=True)
+
+    # Coordinates are generated from the specified endpoints and 2/126-degree
+    # spacing, with north-to-south rows and west-to-east columns.
+    latitudes = np.linspace(55.0, 53.0, 127)
+    longitudes = np.linspace(-131.0, -129.0, 127)
+    matrix = np.zeros((127, 127), dtype=np.uint8)
+
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            on_land = any(inside_polygon(lon, lat, poly) for poly in MAINLAND)
+            on_island = any(inside_polygon(lon, lat, poly) for poly in ISLANDS)
+            matrix[row, col] = int(on_land or on_island)
+
+    with (out / "candidate.csv").open("w", newline="", encoding="ascii") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # Land is white (255); water is black (0).
+    image = Image.fromarray(matrix * 255, mode="L")
+    image.save(out / "candidate.png")
+    image.resize((1016, 1016), resample=Image.Resampling.NEAREST).save(
+        out / "candidate_8x.png"
+    )
+
+
+if __name__ == "__main__":
+    main()
+```
+
+脚本以手写近似多边形描述大陆海岸、主要海湾/峡湾和框内岛屿，再用点在多边形内测试生成矩阵；这不是逐点独立推理。运行依赖为 Python、NumPy 和 Pillow。运行后会在当前目录的 `outputs/` 下生成 CSV 和两张 PNG。

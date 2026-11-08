@@ -1,0 +1,8 @@
+condition,provider_dir,attempts,ok,partial,failed,valid_rate,cost_observed_n,cost_missing_n,final_turn_cost_observed_usd,final_turn_cost_mean_usd,duration_median_sec,retries_total
+OR,experiments,294,120,4,170,0.40816326530612246,238,56,34.629563100000006,0.14550236596638658,196.0,91
+A,channel-A_xfcode_providerA,120,109,4,7,0.9083333333333333,0,120,,,305.4,106
+B,S1_s009mix_providerB,31,30,0,1,0.967741935483871,0,31,,,640.9,5
+C,S1_s007mix3_providerC,130,107,21,2,0.823076923076923,0,130,,,124.8,8
+D,channel-A_channel-D_providerD,90,79,10,1,0.8777777777777778,0,90,,,239.3,22
+E,channel-A_channel-E_providerE,125,47,1,77,0.376,0,125,,,237.0,463
+F,channel-A_channel-E_providerF,113,86,23,4,0.7610619469026548,0,113,,,142.2,4

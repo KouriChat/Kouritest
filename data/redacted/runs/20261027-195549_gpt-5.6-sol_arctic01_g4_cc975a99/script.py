@@ -1,0 +1,95 @@
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+# Approximate island outlines, written as (longitude, latitude) vertices.
+# These hand-authored polygons are the complete geographic input.
+ISLANDS = [
+    [(-83.8, 76.0), (-83.0, 76.5), (-82.6, 77.0), (-82.5, 77.5),
+     (-82.0, 78.0), (-81.8, 78.5), (-81.3, 79.0), (-80.8, 79.5),
+     (-78.5, 79.8), (-76.0, 79.6), (-74.5, 79.0), (-74.0, 78.0),
+     (-75.0, 77.0), (-77.0, 76.0), (-79.5, 75.7), (-81.5, 75.8)],
+    [(-91.5, 74.4), (-90.5, 75.2), (-89.0, 75.8), (-87.0, 76.2),
+     (-84.5, 76.4), (-82.5, 76.2), (-80.8, 75.8), (-80.0, 75.2),
+     (-80.5, 74.6), (-82.0, 74.2), (-84.0, 74.0), (-86.0, 73.9),
+     (-88.0, 74.0), (-90.0, 74.1)],
+    [(-81.0, 75.4), (-80.0, 75.6), (-78.0, 75.0), (-76.0, 74.0),
+     (-74.0, 73.0), (-73.0, 72.4), (-73.0, 72.0), (-81.0, 72.0)],
+    [(-102.0, 75.5), (-100.0, 75.8), (-98.0, 76.2), (-96.0, 76.1),
+     (-95.0, 75.6), (-96.0, 75.1), (-98.0, 74.9), (-100.0, 75.0),
+     (-101.5, 75.2)],
+    [(-116.0, 75.6), (-113.0, 75.8), (-110.0, 76.2), (-107.0, 76.8),
+     (-104.0, 76.9), (-101.0, 76.5), (-100.0, 76.0), (-102.0, 75.5),
+     (-105.0, 75.2), (-109.0, 75.1), (-113.0, 75.2)],
+    [(-103.5, 72.8), (-102.0, 73.3), (-100.5, 73.8), (-98.5, 74.2),
+     (-97.0, 74.0), (-97.0, 73.4), (-98.0, 72.9), (-100.0, 72.6),
+     (-102.0, 72.5)],
+    [(-105.0, 73.0), (-103.0, 73.2), (-101.5, 73.5), (-100.0, 73.6),
+     (-100.0, 73.0), (-101.5, 72.7), (-103.5, 72.5), (-105.0, 72.5)],
+    [(-93.5, 78.0), (-92.5, 78.5), (-91.0, 79.0), (-89.5, 79.2),
+     (-88.5, 78.8), (-88.8, 78.2), (-90.0, 77.8), (-92.0, 77.7)],
+    [(-103.0, 77.8), (-102.0, 78.2), (-100.5, 78.5), (-99.0, 78.4),
+     (-98.5, 77.9), (-99.5, 77.5), (-101.0, 77.4), (-102.5, 77.5)],
+    [(-98.0, 78.0), (-97.0, 78.3), (-95.5, 78.4), (-94.5, 78.1),
+     (-95.0, 77.7), (-96.5, 77.6), (-97.5, 77.7)],
+    [(-114.0, 77.6), (-112.0, 78.0), (-110.0, 78.3), (-108.5, 78.1),
+     (-108.0, 77.6), (-109.5, 77.2), (-112.0, 77.2)],
+    [(-115.0, 76.8), (-113.0, 77.1), (-111.5, 77.4), (-110.0, 77.2),
+     (-110.0, 76.8), (-112.0, 76.5), (-114.0, 76.5)],
+    [(-103.0, 77.7), (-102.0, 78.0), (-101.0, 78.0), (-100.5, 77.7),
+     (-101.5, 77.5), (-102.5, 77.5)],
+    [(-96.0, 74.8), (-95.0, 75.2), (-94.0, 75.3), (-93.0, 75.0),
+     (-93.5, 74.6), (-95.0, 74.5)],
+    [(-95.5, 72.8), (-94.0, 73.4), (-92.5, 74.0), (-91.5, 74.5),
+     (-90.5, 74.4), (-91.0, 73.8), (-92.5, 73.2), (-94.0, 72.8)],
+]
+
+
+def inside_polygon(lon, lat, polygon):
+    """Return whether a point is inside a polygon using ray crossing."""
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if (yi > lat) != (yj > lat):
+            crossing_lon = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < crossing_lon:
+                inside = not inside
+        j = i
+    return inside
+def main():
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    latitudes = [79.0 - 0.1 * i for i in range(61)]
+    longitudes = [-105.0 + 0.1 * j for j in range(241)]
+    matrix = np.zeros((61, 241), dtype=np.uint8)
+
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            if any(inside_polygon(lon, lat, island) for island in ISLANDS):
+                matrix[row, col] = 1
+
+    with (output_dir / "candidate.csv").open(
+        "w", encoding="ascii", newline=""
+    ) as stream:
+        for values in matrix:
+            stream.write(",".join(str(int(value)) for value in values) + "\n")
+
+    image = Image.fromarray(matrix * 255, mode="L").convert("RGB")
+    image.save(output_dir / "candidate.png")
+    enlarged = image.resize(
+        (1928, 488), resample=Image.Resampling.NEAREST
+    )
+    enlarged.save(output_dir / "candidate_8x.png")
+
+    assert matrix.shape == (61, 241)
+    assert matrix.size == 14701
+    assert set(np.unique(matrix)).issubset({0, 1})
+    assert image.size == (241, 61)
+    assert enlarged.size == (1928, 488)
+
+
+if __name__ == "__main__":
+    main()

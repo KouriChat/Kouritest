@@ -1,0 +1,9 @@
+metric,metric_label,n_maps,mean_effect,median_effect,ci95_low,ci95_high,n_negative,share_negative,signflip_p_negative,sham_abs_median,sham_abs_p95,exceeds_sham_p95
+bf1,边界F1@1,0,,,,,0,,,,,False
+iou,分量IoU中位数,0,,,,,0,,,,,False
+acc,准确率,0,,,,,0,,,,,False
+hss,HSS,0,,,,,0,,,,,False
+iou_aw,分量IoU面积加权,0,,,,,0,,,,,False
+iou50,IoU≥0.5比例,0,,,,,0,,,,,False
+comp_recall,分量召回率,0,,,,,0,,,,,False
+nw,近陆窄水保留率,0,,,,,0,,,,,False

@@ -1,0 +1,557 @@
+方法：使用手写近似多边形、椭圆岛屿和少量海湾排除规则，对每个采样点自动判定；不是逐点独立语言推理。依赖 Python、NumPy、Pillow。
+
+```python
+from pathlib import Path
+import csv
+import math
+
+import numpy as np
+from PIL import Image
+
+
+# Hand-authored approximate outlines in (longitude, latitude) order.
+LAND_POLYGONS = [
+    # North America
+    [
+        (-170, 68), (-168, 72), (-158, 72), (-148, 70), (-137, 69),
+        (-126, 71), (-114, 73), (-100, 73), (-86, 70), (-72, 70),
+        (-64, 66), (-61, 61), (-60, 56), (-55, 52), (-59, 49),
+        (-66, 46), (-70, 44), (-74, 41), (-75, 38), (-77, 35),
+        (-81, 31), (-80, 25), (-83, 25), (-85, 29), (-89, 30),
+        (-94, 29), (-97, 26), (-101, 24), (-106, 23), (-110, 27),
+        (-115, 31), (-118, 33), (-122, 38), (-124, 44), (-127, 49),
+        (-134, 55), (-141, 59), (-151, 60), (-160, 57), (-165, 60),
+        (-164, 65)
+    ],
+
+    # Mexico, Central America
+    [
+        (-117, 32), (-111, 31), (-106, 25), (-101, 20), (-96, 16),
+        (-91, 15), (-87, 11), (-82, 9), (-79, 9), (-77, 8),
+        (-80, 7), (-83, 8), (-87, 14), (-92, 16), (-98, 20),
+        (-105, 24), (-112, 31)
+    ],
+    [
+        (-97, 23), (-91, 22), (-86, 22), (-86, 19),
+        (-89, 18), (-93, 19), (-96, 21)
+    ],
+
+    # South America
+    [
+        (-81, 12), (-75, 11), (-70, 12), (-65, 10), (-60, 9),
+        (-53, 5), (-50, 1), (-45, -1), (-35, -6), (-35, -12),
+        (-39, -18), (-41, -23), (-48, -28), (-52, -33),
+        (-57, -38), (-62, -42), (-68, -52), (-72, -55),
+        (-75, -50), (-74, -40), (-71, -30), (-70, -19),
+        (-73, -12), (-78, -7), (-80, -2), (-80, 5)
+    ],
+
+    # Greenland
+    [
+        (-73, 59), (-62, 59), (-52, 60), (-44, 62), (-40, 66),
+        (-29, 69), (-20, 73), (-18, 79), (-25, 83), (-43, 84),
+        (-57, 81), (-67, 76), (-72, 69)
+    ],
+
+    # Eurasia
+    [
+        (-10, 36), (-10, 43), (-6, 47), (-2, 49), (1, 52),
+        (5, 54), (9, 55), (12, 58), (6, 59), (5, 62),
+        (12, 68), (20, 71), (30, 70), (40, 68), (50, 69),
+        (60, 72), (78, 74), (98, 77), (119, 75), (140, 72),
+        (160, 70), (178, 67), (176, 63), (169, 60), (162, 59),
+        (158, 56), (151, 59), (144, 54), (141, 48), (136, 44),
+        (130, 42), (126, 39), (122, 38), (121, 31), (118, 24),
+        (110, 20), (106, 11), (103, 2), (100, 7), (97, 16),
+        (92, 21), (88, 22), (85, 19), (81, 8), (76, 7),
+        (72, 18), (67, 24), (60, 25), (56, 25), (51, 12),
+        (44, 12), (43, 16), (40, 20), (35, 30), (36, 35),
+        (30, 36), (26, 40), (21, 40), (16, 43), (12, 45),
+        (8, 44), (4, 43), (0, 42), (-5, 38)
+    ],
+
+    # Chukotka across the antimeridian
+    [
+        (-180, 67), (-176, 67), (-171, 65), (-169, 62),
+        (-174, 61), (-180, 63)
+    ],
+
+    # Africa
+    [
+        (-17, 28), (-17, 20), (-16, 12), (-11, 5), (-5, 4),
+        (1, 5), (8, 4), (10, 1), (10, -5), (13, -10),
+        (12, -18), (16, -29), (20, -35), (28, -34),
+        (33, -28), (36, -17), (40, -10), (43, 0),
+        (51, 11), (44, 12), (42, 18), (35, 29), (32, 31),
+        (25, 32), (15, 36), (4, 37), (-5, 35), (-10, 32)
+    ],
+
+    # Australia
+    [
+        (113, -11), (122, -14), (130, -12), (137, -12),
+        (142, -11), (146, -18), (153, -25), (153, -29),
+        (149, -36), (142, -39), (134, -35), (129, -33),
+        (124, -35), (115, -34), (113, -29), (114, -23)
+    ],
+
+    # Canadian Arctic islands
+    [
+        (-82, 63), (-74, 63), (-66, 66), (-62, 70),
+        (-66, 74), (-75, 76), (-81, 72)
+    ],
+    [
+        (-123, 70), (-115, 68), (-105, 69), (-102, 74),
+        (-109, 77), (-119, 76)
+    ],
+    [
+        (-102, 76), (-92, 76), (-85, 79), (-88, 82),
+        (-98, 82), (-105, 79)
+    ],
+    [
+        (-82, 77), (-72, 76), (-62, 79), (-65, 83),
+        (-76, 83), (-84, 81)
+    ],
+
+    # Newfoundland
+    [
+        (-59, 47), (-53, 47), (-52, 50),
+        (-56, 52), (-59, 50)
+    ],
+
+    # British Isles
+    [
+        (-6, 50), (-3, 50), (0, 52), (1, 55),
+        (-3, 59), (-6, 57), (-5, 54)
+    ],
+    [
+        (-10, 51), (-7, 51), (-5, 54), (-7, 56), (-10, 55)
+    ],
+
+    # Iceland
+    [
+        (-24, 63), (-14, 63), (-13, 66),
+        (-18, 67), (-23, 66)
+    ],
+
+    # Svalbard
+    [
+        (10, 76), (24, 76), (28, 80),
+        (20, 81), (11, 79)
+    ],
+
+    # Novaya Zemlya
+    [
+        (50, 69), (57, 70), (61, 75),
+        (58, 77), (53, 75)
+    ],
+
+    # Italy
+    [
+        (7, 45), (12, 45), (14, 42), (17, 40),
+        (16, 38), (13, 40), (11, 43)
+    ],
+
+    # Korea
+    [
+        (125, 34), (129, 35), (130, 40),
+        (127, 42), (125, 39)
+    ],
+
+    # Japan: Hokkaido, Honshu, Shikoku/Kyushu
+    [
+        (140, 41), (145, 42), (146, 45),
+        (142, 46), (139, 44)
+    ],
+    [
+        (130, 33), (134, 33), (139, 36), (142, 40),
+        (140, 41), (136, 37), (132, 35)
+    ],
+    [
+        (129, 30), (132, 31), (132, 34),
+        (129, 34), (127, 32)
+    ],
+
+    # Taiwan
+    [
+        (120, 21), (122, 22), (122, 25),
+        (121, 26), (120, 24)
+    ],
+
+    # Sri Lanka
+    [
+        (79, 5), (82, 6), (82, 10),
+        (80, 10), (79, 8)
+    ],
+
+    # Sumatra
+    [
+        (94, 6), (98, 5), (105, -4),
+        (105, -6), (101, -5), (96, 1)
+    ],
+
+    # Java
+    [
+        (105, -6), (114, -7), (115, -9),
+        (108, -9), (105, -8)
+    ],
+
+    # Borneo
+    [
+        (108, 7), (116, 7), (119, 3),
+        (117, -4), (111, -4), (108, 0)
+    ],
+
+    # Sulawesi
+    [
+        (119, 2), (123, 2), (125, -2),
+        (123, -6), (120, -5), (121, -2)
+    ],
+
+    # New Guinea
+    [
+        (130, -2), (139, -2), (147, -5), (151, -6),
+        (149, -9), (141, -9), (135, -7), (130, -5)
+    ],
+
+    # Philippines
+    [
+        (119, 19), (123, 19), (125, 14),
+        (124, 9), (121, 6), (119, 11)
+    ],
+
+    # New Zealand, North and South Islands
+    [
+        (172, -34), (176, -37), (176, -40),
+        (173, -40), (171, -37)
+    ],
+    [
+        (166, -41), (171, -40), (174, -43),
+        (170, -47), (166, -46)
+    ],
+
+    # Madagascar
+    [
+        (48, -12), (51, -15), (50, -25),
+        (47, -27), (44, -23), (45, -16)
+    ],
+
+    # Cuba
+    [
+        (-85, 23), (-80, 22), (-74, 20),
+        (-75, 19), (-82, 21)
+    ],
+
+    # Hispaniola
+    [
+        (-74, 20), (-68, 19), (-69, 17), (-73, 18)
+    ],
+
+    # Jamaica
+    [
+        (-79, 19), (-76, 18), (-78, 17)
+    ],
+
+    # Tierra del Fuego
+    [
+        (-75, -52), (-67, -52), (-66, -55), (-72, -56)
+    ],
+
+    # Tasmania
+    [
+        (144, -40), (149, -40), (148, -44), (145, -44)
+    ],
+]
+
+
+# Ocean-connected bays and seas accidentally enclosed by broad land polygons.
+WATER_POLYGONS = [
+    # Hudson Bay
+    [
+        (-95, 64), (-89, 66), (-82, 64), (-78, 61),
+        (-78, 57), (-82, 53), (-87, 51), (-92, 53),
+        (-95, 58)
+    ],
+
+    # Gulf of California
+    [
+        (-115, 32), (-112, 30), (-108, 24),
+        (-110, 23), (-114, 27)
+    ],
+
+    # Baltic Sea
+    [
+        (10, 54), (14, 54), (18, 57), (20, 61),
+        (23, 65), (27, 65), (25, 61), (30, 60),
+        (29, 58), (22, 58), (18, 54)
+    ],
+
+    # Black Sea
+    [
+        (27, 41), (29, 44), (34, 46), (41, 46),
+        (43, 43), (41, 40), (35, 40), (31, 41)
+    ],
+
+    # Red Sea
+    [
+        (33, 29), (36, 27), (39, 21),
+        (43, 13), (41, 12), (37, 19)
+    ],
+
+    # Persian Gulf
+    [
+        (47, 30), (50, 30), (56, 27),
+        (57, 24), (53, 23), (49, 26)
+    ],
+]
+
+
+# Small islands represented by hand-authored ellipses:
+# (center longitude, center latitude, longitude radius, latitude radius)
+LAND_ELLIPSES = [
+    # Aleutians
+    (-172, 52.5, 3.0, 1.3),
+    (-166, 53.0, 3.0, 1.4),
+    (-160, 54.0, 3.0, 1.4),
+
+    # Caribbean and Atlantic
+    (-66, 18.2, 1.8, 1.0),   # Puerto Rico
+    (-64, 32.3, 1.5, 1.0),   # Bermuda
+    (-60.5, 13.3, 1.4, 1.2), # Lesser Antilles
+    (-59, -51.5, 2.0, 1.3),  # Falklands
+
+    # Mediterranean islands
+    (9, 40, 1.5, 2.2),       # Sardinia
+    (14, 37.5, 2.1, 1.2),    # Sicily
+    (9, 42, 1.0, 1.6),       # Corsica
+    (25, 35.2, 2.7, 1.1),    # Crete
+    (33, 35, 1.7, 0.9),      # Cyprus
+    (3, 39.7, 2.0, 1.5),     # Balearics
+
+    # Indian Ocean
+    (55.5, -4.5, 1.4, 1.2),  # Seychelles
+    (57.5, -20.3, 1.5, 1.2), # Mauritius/Reunion vicinity
+    (73, 3.5, 1.1, 1.5),     # Maldives approximation
+    (43.5, -12, 1.4, 1.2),   # Comoros
+
+    # Southeast Asian islands
+    (126, 0, 1.7, 2.8),      # Moluccas
+    (128, -3, 1.4, 2.6),
+    (134, -1, 1.3, 1.8),
+    (126, 8, 1.4, 2.3),      # Mindanao
+    (122, 12, 1.5, 2.7),     # Visayas
+    (121, 16, 1.4, 3.0),     # Luzon
+
+    # Pacific
+    (134, 7.5, 1.3, 1.6),    # Palau
+    (145, 15, 1.3, 1.8),     # Marianas
+    (160, -9, 1.5, 1.5),     # Solomon Islands
+    (167, -16, 1.5, 2.4),    # Vanuatu
+    (178, -17, 1.5, 2.0),    # Fiji
+    (-172, -14, 1.5, 1.2),   # Samoa
+    (-157, 20, 1.5, 1.2),    # Hawaii
+
+    # North Atlantic / Arctic
+    (-7, 62, 1.5, 1.5),      # Faroe
+    (47, 80, 2.5, 1.6),      # Franz Josef Land approximation
+    (95, 79, 4.0, 1.8),      # Severnaya Zemlya
+    (140, 75, 4.0, 1.6),     # New Siberian Islands
+]
+
+
+def point_in_polygon(x, y, polygon):
+    """Odd-even ray casting; boundary points are treated as inside."""
+    inside = False
+    n = len(polygon)
+
+    for i in range(n):
+        x1, y1 = polygon[i]
+        x2, y2 = polygon[(i + 1) % n]
+
+        # Boundary test.
+        cross = (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1)
+        if abs(cross) < 1e-10:
+            if min(x1, x2) <= x <= max(x1, x2) and \
+               min(y1, y2) <= y <= max(y1, y2):
+                return True
+
+        if (y1 > y) != (y2 > y):
+            intersection_x = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+            if intersection_x >= x:
+                inside = not inside
+
+    return inside
+
+
+def point_in_ellipse(lon, lat, ellipse):
+    cx, cy, rx, ry = ellipse
+    return ((lon - cx) / rx) ** 2 + ((lat - cy) / ry) ** 2 <= 1.0
+
+
+# Approximate grounded Antarctic coastline. Ice shelves and surrounding sea
+# remain water. Values are approximate northern coastline latitudes.
+ANTARCTIC_EDGE = [
+    (-180, -72),
+    (-160, -74),
+    (-140, -75),
+    (-120, -74),
+    (-100, -73),
+    (-80, -72),
+    (-68, -67),
+    (-62, -63),  # Antarctic Peninsula
+    (-56, -64),
+    (-45, -70),
+    (-30, -73),
+    (0, -71),
+    (30, -70),
+    (60, -67),
+    (90, -66),
+    (120, -67),
+    (150, -70),
+    (180, -72),
+]
+
+
+def antarctic_coast_latitude(lon):
+    for (x1, y1), (x2, y2) in zip(
+        ANTARCTIC_EDGE[:-1], ANTARCTIC_EDGE[1:]
+    ):
+        if x1 <= lon <= x2:
+            fraction = (lon - x1) / (x2 - x1)
+            return y1 + fraction * (y2 - y1)
+
+    raise ValueError("Longitude outside Antarctic interpolation range")
+
+
+def is_land(lon, lat):
+    # Grounded Antarctic land/ice.
+    if lat <= antarctic_coast_latitude(lon):
+        return True
+
+    land = any(
+        point_in_polygon(lon, lat, polygon)
+        for polygon in LAND_POLYGONS
+    )
+
+    if not land:
+        land = any(
+            point_in_ellipse(lon, lat, ellipse)
+            for ellipse in LAND_ELLIPSES
+        )
+
+    if not land:
+        return False
+
+    # Remove only ocean-connected waters. Inland lakes are deliberately not
+    # removed because the requested classification counts them as land.
+    if any(
+        point_in_polygon(lon, lat, polygon)
+        for polygon in WATER_POLYGONS
+    ):
+        return False
+
+    return True
+
+
+def build_matrix():
+    latitudes = list(range(89, -90, -2))
+    longitudes = list(range(-179, 180, 2))
+
+    assert len(latitudes) == 90
+    assert len(longitudes) == 180
+
+    matrix = np.zeros((90, 180), dtype=np.uint8)
+
+    for row, latitude in enumerate(latitudes):
+        for column, longitude in enumerate(longitudes):
+            matrix[row, column] = int(is_land(longitude, latitude))
+
+    return matrix
+
+
+def save_outputs(matrix):
+    output_dir = Path.cwd() / "outputs"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = output_dir / "candidate.csv"
+    original_path = output_dir / "candidate.png"
+    enlarged_path = output_dir / "candidate_8x.png"
+
+    with csv_path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    pixels = (matrix * 255).astype(np.uint8)
+    original = Image.fromarray(pixels, mode="L")
+    original.save(original_path)
+
+    try:
+        nearest = Image.Resampling.NEAREST
+    except AttributeError:
+        nearest = Image.NEAREST
+
+    enlarged = original.resize((1440, 720), resample=nearest)
+    enlarged.save(enlarged_path)
+
+    return csv_path, original_path, enlarged_path
+
+
+def validate(matrix, csv_path, original_path, enlarged_path):
+    assert matrix.shape == (90, 180)
+    assert matrix.size == 16200
+    assert set(np.unique(matrix).tolist()) <= {0, 1}
+
+    with csv_path.open("r", newline="", encoding="utf-8") as file:
+        rows = list(csv.reader(file))
+
+    assert len(rows) == 90
+    assert all(len(row) == 180 for row in rows)
+    assert all(value in {"0", "1"} for row in rows for value in row)
+    assert sum(len(row) for row in rows) == 16200
+
+    with Image.open(original_path) as image:
+        assert image.size == (180, 90)
+        assert set(image.convert("L").getdata()) <= {0, 255}
+
+    with Image.open(enlarged_path) as image:
+        assert image.size == (1440, 720)
+        enlarged_array = np.asarray(image.convert("L"))
+
+    expected = np.repeat(
+        np.repeat(matrix * 255, 8, axis=0),
+        8,
+        axis=1
+    ).astype(np.uint8)
+
+    assert np.array_equal(enlarged_array, expected)
+
+
+def main():
+    matrix = build_matrix()
+    paths = save_outputs(matrix)
+    validate(matrix, *paths)
+
+    print("Generated and validated:")
+    for path in paths:
+        print(path)
+    print(
+        f"Matrix: {matrix.shape[0]}x{matrix.shape[1]}, "
+        f"values={matrix.size}, land={int(matrix.sum())}, "
+        f"water={int(matrix.size - matrix.sum())}"
+    )
+
+
+if __name__ == "__main__":
+    main()
+```
+
+运行：
+
+```bash
+python generate_map.py
+```
+
+脚本会生成并验证：
+
+- `outputs/candidate.csv`
+- `outputs/candidate.png`
+- `outputs/candidate_8x.png`

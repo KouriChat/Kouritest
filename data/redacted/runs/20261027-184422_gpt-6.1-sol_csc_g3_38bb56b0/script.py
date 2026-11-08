@@ -1,0 +1,180 @@
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+
+# Coordinates are (longitude, latitude). Rings are hand-written approximations.
+LAND = [
+    # Mainland Southeast Asia and southern China, including land beyond the frame.
+    [
+        (88, 32), (125, 32), (125, 26), (122, 24.8), (120, 24.2),
+        (118.5, 23.6), (117, 22.9), (115.6, 22.4), (114.7, 22.1),
+        (113.5, 22.3), (112.4, 21.8), (111.5, 21.5), (110.5, 20.8),
+        (109.6, 19.8), (109.2, 18.5), (108.7, 17.5), (108.2, 16.5),
+        (107.8, 15.5), (107.2, 14.5), (106.5, 13.6), (106.1, 12.5),
+        (105.5, 11.7), (104.8, 10.8), (104.2, 10.0), (103.5, 9.5),
+        (102.7, 9.5), (101.8, 10.1), (101, 11.4), (100.5, 13),
+        (99.7, 14.5), (99, 16), (98.3, 17.5), (97.6, 19),
+        (96.8, 21), (96, 23), (94, 25), (90, 26),
+    ],
+    # Malay Peninsula, extending into Singapore.
+    [
+        (100.1, 7.8), (101.2, 7.2), (102.3, 6.6), (103.3, 5.7),
+        (103.6, 4.8), (103.2, 3.8), (103.5, 2.7), (104.0, 1.5),
+        (103.6, 0.4), (102.8, 0.2), (102.0, 1.0), (101.4, 2.3),
+        (100.8, 3.8), (100.3, 5.2), (99.8, 6.5),
+    ],
+    # Sumatra.
+    [
+        (95.0, 5.7), (96.2, 5.8), (97.3, 5.2), (98.3, 4.2),
+        (99.2, 3.1), (100.2, 2.0), (101.2, 0.7), (102.0, -0.8),
+        (102.5, -2.4), (102.0, -4.0), (101.1, -5.2), (100.0, -5.6),
+        (98.8, -4.8), (97.7, -3.3), (96.8, -1.7), (96.0, 0.1),
+        (95.3, 2.0), (94.8, 4.0),
+    ],
+    # Java.
+    [
+        (105.0, -5.7), (106.0, -5.8), (107.2, -6.0), (108.5, -6.3),
+        (110.0, -6.7), (111.5, -7.2), (113.0, -7.7), (114.6, -8.0),
+        (114.8, -8.5), (113.4, -8.6), (111.8, -8.3), (110.0, -7.9),
+        (108.2, -7.5), (106.5, -7.1), (105.2, -6.7),
+    ],
+    # Borneo.
+    [
+        (109.5, 7.0), (110.6, 7.2), (112.0, 6.8), (113.2, 5.8),
+        (114.5, 4.7), (115.5, 3.5), (116.5, 2.4), (117.5, 1.0),
+        (117.0, 0.1), (115.8, -0.5), (114.5, -1.0), (113.0, -2.0),
+        (111.5, -3.0), (110.2, -3.2), (109.2, -2.5), (108.8, -1.0),
+        (109.0, 0.5), (109.2, 2.0), (109.0, 4.0),
+    ],
+    # Taiwan.
+    [
+        (120.0, 25.4), (121.0, 25.3), (121.7, 24.7), (121.8, 23.5),
+        (121.3, 22.2), (120.8, 21.8), (120.2, 22.5), (119.9, 23.8),
+    ],
+    # Luzon.
+    [
+        (119.7, 18.6), (120.4, 18.5), (121.2, 18.0), (122.0, 17.0),
+        (122.3, 16.0), (121.9, 15.0), (121.5, 14.0), (121.0, 13.0),
+        (120.7, 12.1), (120.0, 12.0), (119.6, 13.0), (119.5, 14.5),
+        (119.0, 16.0), (119.2, 17.4),
+    ],
+    # Mindoro and Palawan.
+    [
+        (120.2, 13.5), (121.1, 13.4), (121.3, 12.7),
+        (120.9, 12.2), (120.4, 12.3),
+    ],
+    [
+        (117.0, 11.5), (117.6, 11.2), (118.0, 10.4), (118.2, 9.2),
+        (118.3, 8.0), (118.0, 6.8), (117.7, 5.8), (117.2, 5.6),
+        (116.9, 6.7), (117.0, 8.0), (116.8, 9.5),
+    ],
+    # Central Philippine islands.
+    [(121.7, 11.8), (122.5, 11.8), (122.8, 11.2), (122.4, 10.5), (121.8, 10.7)],
+    [(122.5, 10.8), (123.1, 10.7), (123.2, 9.6), (122.9, 9.0), (122.5, 9.5)],
+    [(123.4, 11.3), (123.8, 11.1), (123.9, 10.2), (123.6, 9.6), (123.3, 10.2)],
+    [(123.7, 10.1), (124.5, 10.0), (124.7, 9.6), (124.1, 9.5), (123.7, 9.7)],
+    [(124.3, 11.5), (125.0, 11.2), (125.1, 10.3), (124.8, 9.8), (124.4, 10.3)],
+    [(124.5, 12.5), (125.5, 12.3), (125.5, 11.5), (124.9, 11.2), (124.5, 11.7)],
+    # Mindanao.
+    [
+        (123.0, 9.8), (123.8, 8.9), (124.8, 8.5), (125.5, 7.7),
+        (126.0, 6.8), (125.5, 6.0), (124.5, 5.5), (123.5, 5.5),
+        (122.5, 6.3), (122.0, 7.3), (122.2, 8.5),
+    ],
+    # Hainan.
+    [
+        (108.6, 20.2), (109.5, 20.2), (110.3, 19.8),
+        (110.6, 19.2), (110.1, 18.2), (109.3, 18.1), (108.7, 18.7),
+    ],
+    # Hong Kong / Pearl River delta islands, deliberately coarse.
+    [(113.8, 22.5), (114.4, 22.5), (114.5, 22.1), (114.0, 22.1)],
+]
+
+# Larger islands and exposed reef features in the South China Sea.
+ISLANDS = [
+    (112.3, 16.5, 0.09),  # Paracel group
+    (111.7, 16.5, 0.06), (112.0, 17.0, 0.05),
+    (114.4, 10.4, 0.05),  # Spratly region
+    (114.2, 11.0, 0.04), (115.0, 10.0, 0.04),
+    (116.0, 10.0, 0.04), (116.7, 9.8, 0.04),
+    (117.5, 8.8, 0.04), (115.8, 8.6, 0.04),
+    (114.0, 8.0, 0.04), (113.0, 9.0, 0.035),
+    (112.5, 7.5, 0.03), (115.5, 7.0, 0.03),
+    (118.0, 7.5, 0.03),
+    (119.3, 10.5, 0.04),  # Cuyo group
+    (122.0, 20.5, 0.05), (121.9, 20.3, 0.04),  # Batanes
+    (122.0, 19.0, 0.04), (120.7, 11.3, 0.06),
+    (121.0, 9.0, 0.05), (123.0, 7.0, 0.04),
+    (125.5, 9.0, 0.04), (126.0, 8.0, 0.035),
+    (120.0, 5.0, 0.035),
+]
+
+
+def on_segment(x, y, a, b, eps=1e-10):
+    cross = (x - a[0]) * (b[1] - a[1]) - (y - a[1]) * (b[0] - a[0])
+    if abs(cross) > eps:
+        return False
+    return (min(a[0], b[0]) - eps <= x <= max(a[0], b[0]) + eps
+            and min(a[1], b[1]) - eps <= y <= max(a[1], b[1]) + eps)
+
+
+def in_ring(x, y, ring):
+    inside = False
+    j = len(ring) - 1
+    for i, (xi, yi) in enumerate(ring):
+        xj, yj = ring[j]
+        if on_segment(x, y, (xi, yi), (xj, yj)):
+            return True
+        if (yi > y) != (yj > y):
+            crossing_x = (xj - xi) * (y - yi) / (yj - yi) + xi
+            if x < crossing_x:
+                inside = not inside
+        j = i
+    return inside
+
+
+def on_island(x, y, lon, lat, radius):
+    # Approximate local distance in degrees, accounting for longitude scale.
+    dx = (x - lon) * np.cos(np.deg2rad(lat))
+    dy = y - lat
+    return dx * dx + dy * dy <= radius * radius
+
+
+def is_land(lon, lat):
+    if any(in_ring(lon, lat, ring) for ring in LAND):
+        return True
+    return any(on_island(lon, lat, ilon, ilat, radius)
+               for ilon, ilat, radius in ISLANDS)
+
+
+def main():
+    latitudes = 23.0 - 0.2 * np.arange(111)
+    longitudes = 99.0 + 0.2 * np.arange(141)
+    matrix = np.zeros((111, 141), dtype=np.uint8)
+
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            matrix[row, col] = int(is_land(float(lon), float(lat)))
+
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    np.savetxt(output_dir / "candidate.csv", matrix, fmt="%d", delimiter=",")
+    image = Image.fromarray((matrix * 255).astype(np.uint8), mode="L")
+    image.save(output_dir / "candidate.png")
+    enlarged = image.resize((141 * 8, 111 * 8), resample=Image.Resampling.NEAREST)
+    enlarged.save(output_dir / "candidate_8x.png")
+
+    loaded = np.loadtxt(output_dir / "candidate.csv", delimiter=",", dtype=np.uint8)
+    assert loaded.shape == (111, 141)
+    assert np.isin(loaded, (0, 1)).all()
+    assert image.size == (141, 111)
+    assert set(image.getdata()).issubset({0, 255})
+    assert enlarged.size == (1128, 888)
+    assert np.array_equal(np.asarray(enlarged)[::8, ::8], matrix * 255)
+
+
+if __name__ == "__main__":
+    main()

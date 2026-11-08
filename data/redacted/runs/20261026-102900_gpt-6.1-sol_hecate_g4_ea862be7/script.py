@@ -1,0 +1,84 @@
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+N = 127
+STEP = 2.0 / 126.0
+OUT = Path("outputs")
+
+
+def contains(lon, lat, polygon):
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        if (yi > lat) != (yj > lat):
+            crossing = (xj - xi) * (lat - yi) / (yj - yi) + xi
+            if lon < crossing:
+                inside = not inside
+        j = i
+    return inside
+
+
+MAINLAND = [
+    (-129.78, 55.00), (-129.82, 54.82), (-130.02, 54.68),
+    (-130.12, 54.54), (-130.27, 54.42), (-130.35, 54.28),
+    (-130.30, 54.16), (-130.19, 54.04), (-130.10, 53.91),
+    (-129.98, 53.78), (-129.87, 53.62), (-129.73, 53.48),
+    (-129.60, 53.31), (-129.48, 53.00), (-128.00, 53.00),
+    (-128.00, 56.00), (-129.75, 56.00),
+]
+
+ISLANDS = [
+    [(-130.23, 54.44), (-130.08, 54.42), (-129.99, 54.34),
+     (-129.96, 54.22), (-129.90, 54.13), (-129.94, 54.02),
+     (-130.02, 53.94), (-130.13, 53.98), (-130.22, 54.07),
+     (-130.28, 54.20), (-130.27, 54.34)],
+    [(-129.92, 53.72), (-129.79, 53.70), (-129.69, 53.63),
+     (-129.63, 53.52), (-129.66, 53.39), (-129.72, 53.31),
+     (-129.82, 53.34), (-129.89, 53.43), (-129.95, 53.56)],
+    [(-130.57, 53.98), (-130.44, 54.01), (-130.34, 53.96),
+     (-130.31, 53.86), (-130.36, 53.77), (-130.47, 53.75),
+     (-130.57, 53.82), (-130.62, 53.91)],
+]
+ISLANDS += [
+    [(-130.44, 53.72), (-130.34, 53.74), (-130.29, 53.68),
+     (-130.32, 53.59), (-130.41, 53.58), (-130.47, 53.64)],
+    [(-130.05, 54.57), (-129.99, 54.58), (-129.96, 54.53),
+     (-130.00, 54.49), (-130.06, 54.51)],
+    [(-130.21, 53.87), (-130.16, 53.89), (-130.13, 53.84),
+     (-130.17, 53.80), (-130.22, 53.82)],
+    [(-129.57, 53.35), (-129.51, 53.36), (-129.48, 53.31),
+     (-129.52, 53.27), (-129.58, 53.29)],
+]
+
+
+def is_land(lon, lat):
+    if contains(lon, lat, MAINLAND):
+        return 1
+    return int(any(contains(lon, lat, island) for island in ISLANDS))
+
+
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    matrix = np.zeros((N, N), dtype=np.uint8)
+    for row in range(N):
+        lat = 55.0 - row * STEP
+        for col in range(N):
+            lon = -131.0 + col * STEP
+            matrix[row, col] = is_land(lon, lat)
+
+    with (OUT / "candidate.csv").open("w", newline="", encoding="ascii") as f:
+        csv.writer(f, lineterminator="\n").writerows(matrix.tolist())
+
+    image = Image.fromarray(matrix * 255, mode="L").convert("RGB")
+    image.save(OUT / "candidate.png")
+    image.resize((N * 8, N * 8), Image.Resampling.NEAREST).save(
+        OUT / "candidate_8x.png"
+    )
+
+
+if __name__ == "__main__":
+    main()

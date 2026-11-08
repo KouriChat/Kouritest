@@ -1,0 +1,31 @@
+{
+  "run_id": "20261024-111531_gpt-6.1-sol_global_g3_30a44d2a",
+  "channel": "OR",
+  "batch_id": "batch-04",
+  "started_at": "2026-10-24T11:15:31+08:00",
+  "finished_at": "2026-10-24T11:17:48+08:00",
+  "duration_sec": 136.8,
+  "status": "failed",
+  "returncode": 403,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": null,
+  "model": "openai/gpt-6.1-sol",
+  "model_display": "GPT 6.1 Sol",
+  "task": "global",
+  "task_label": "全球 2°",
+  "group": 3,
+  "prompt_sha256": "3b29f0597bf52e8706872573ef54a081c777de4a7d6ad8268514209bffa9dd12",
+  "error": "HTTPError 403: Forbidden",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "script.py": "runs/20261024-111531_gpt-6.1-sol_global_g3_30a44d2a/script.py",
+    "response_error.txt": "runs/20261024-111531_gpt-6.1-sol_global_g3_30a44d2a/response_error.txt"
+  }
+}

@@ -1,0 +1,174 @@
+以下是可独立运行的脚本。它用手写近似多边形和海湾扣除区描述海岸与岛屿，再用点在多边形内的规则逐坐标分类；这是规则计算，不是对每个点分别进行独立推理。运行依赖为 Python、NumPy 和 Pillow。运行后会在 `outputs/` 中生成 CSV 和两张 PNG。
+
+```python
+from pathlib import Path
+import csv
+
+import numpy as np
+from PIL import Image
+
+
+# Hand-estimated WGS84 outlines. Coordinates are (latitude, longitude).
+# These are approximate classification rules, not reference-map data.
+MAINLAND = [
+    (55.00, -129.95), (54.91, -130.10), (54.83, -130.32),
+    (54.75, -130.52), (54.67, -130.55), (54.61, -130.43),
+    (54.54, -130.34), (54.47, -130.20), (54.40, -130.06),
+    (54.33, -129.95), (54.26, -129.82), (54.18, -129.73),
+    (54.10, -129.66), (54.02, -129.59), (53.94, -129.54),
+    (53.86, -129.47), (53.76, -129.40), (53.66, -129.32),
+    (53.55, -129.24), (53.43, -129.17), (53.30, -129.10),
+    (53.16, -129.04), (53.00, -128.99),
+    (53.00, -127.00), (55.00, -127.00),
+]
+
+# Large mainland inlets and channels, represented as water cutouts.
+INLETS = [
+    [
+        (55.02, -130.02), (54.96, -130.00), (54.90, -129.99),
+        (54.84, -129.98), (54.79, -130.00), (54.77, -130.09),
+        (54.82, -130.12), (54.90, -130.10), (54.97, -130.11),
+    ],
+    [
+        (54.67, -130.53), (54.63, -130.45), (54.60, -130.36),
+        (54.57, -130.30), (54.54, -130.34), (54.56, -130.43),
+        (54.60, -130.52),
+    ],
+    [
+        (54.42, -130.14), (54.38, -130.08), (54.34, -130.01),
+        (54.31, -129.97), (54.30, -130.04), (54.34, -130.12),
+        (54.38, -130.18),
+    ],
+    [
+        (54.13, -129.77), (54.08, -129.71), (54.03, -129.65),
+        (53.99, -129.62), (53.98, -129.69), (54.03, -129.76),
+        (54.08, -129.81),
+    ],
+]
+
+# Principal islands and island groups inside the requested rectangle.
+ISLANDS = [
+    # Eastern edge of Graham Island, Haida Gwaii.
+    [
+        (54.56, -131.00), (54.54, -131.00), (54.50, -131.00),
+        (54.46, -131.00), (54.42, -131.00), (54.38, -131.00),
+        (54.34, -131.00), (54.30, -131.00), (54.26, -131.00),
+        (54.23, -131.00), (54.20, -131.00), (54.18, -131.00),
+        (54.15, -131.00), (54.13, -131.00), (54.10, -131.00),
+        (54.08, -131.00), (54.05, -131.00), (54.03, -131.00),
+        (54.00, -131.00), (53.97, -131.00), (53.94, -131.00),
+        (53.91, -131.00), (53.88, -131.00), (53.85, -131.00),
+        (53.82, -131.00), (53.79, -131.00), (53.76, -131.00),
+        (53.73, -131.00), (53.70, -131.00), (53.67, -131.00),
+        (53.64, -131.00), (53.61, -131.00), (53.58, -131.00),
+        (53.55, -131.00), (53.52, -131.00), (53.49, -131.00),
+        (53.46, -131.00), (53.43, -131.00), (53.40, -131.00),
+        (53.37, -131.00), (53.34, -131.00), (53.31, -131.00),
+        (53.28, -131.00), (53.25, -131.00), (53.22, -131.00),
+        (53.19, -131.00), (53.16, -131.00), (53.13, -131.00),
+        (53.10, -131.00), (53.07, -131.00), (53.04, -131.00),
+        (53.01, -131.00), (53.00, -131.00),
+        (53.00, -131.20), (53.10, -131.25), (53.23, -131.28),
+        (53.36, -131.30), (53.49, -131.29), (53.61, -131.27),
+        (53.73, -131.24), (53.85, -131.21), (53.97, -131.17),
+        (54.08, -131.13), (54.19, -131.10), (54.30, -131.08),
+        (54.40, -131.06), (54.49, -131.03),
+    ],
+    # Banks Island.
+    [
+        (54.50, -130.22), (54.47, -130.15), (54.43, -130.12),
+        (54.38, -130.13), (54.34, -130.18), (54.33, -130.24),
+        (54.36, -130.29), (54.41, -130.30), (54.46, -130.27),
+    ],
+    # Pitt Island.
+    [
+        (53.55, -129.73), (53.52, -129.68), (53.47, -129.67),
+        (53.43, -129.70), (53.41, -129.76), (53.44, -129.80),
+        (53.50, -129.79),
+    ],
+    # Porcher Island.
+    [
+        (53.95, -130.40), (53.91, -130.34), (53.86, -130.34),
+        (53.82, -130.39), (53.83, -130.46), (53.88, -130.49),
+        (53.93, -130.46),
+    ],
+    # Small islands around the southern entrance and mainland coast.
+    [
+        (53.72, -130.13), (53.69, -130.08), (53.65, -130.10),
+        (53.64, -130.15), (53.68, -130.18),
+    ],
+    [
+        (54.05, -130.70), (54.02, -130.66), (53.98, -130.68),
+        (53.98, -130.73), (54.02, -130.75),
+    ],
+    [
+        (54.72, -130.82), (54.69, -130.77), (54.65, -130.79),
+        (54.65, -130.84), (54.69, -130.86),
+    ],
+]
+
+
+def point_in_polygon(lat, lon, polygon):
+    """Ray-casting point test; boundary points count as land."""
+    inside = False
+    n = len(polygon)
+    for i in range(n):
+        y1, x1 = polygon[i]
+        y2, x2 = polygon[(i + 1) % n]
+
+        # Treat a point on a polygon edge as inside.
+        cross = (lon - x1) * (y2 - y1) - (lat - y1) * (x2 - x1)
+        if abs(cross) < 1e-10:
+            if (min(x1, x2) - 1e-10 <= lon <= max(x1, x2) + 1e-10
+                    and min(y1, y2) - 1e-10 <= lat <= max(y1, y2) + 1e-10):
+                return True
+
+        if (y1 > lat) != (y2 > lat):
+            crossing_lon = x1 + (lat - y1) * (x2 - x1) / (y2 - y1)
+            if lon < crossing_lon:
+                inside = not inside
+    return inside
+
+
+def is_land(lat, lon):
+    if any(point_in_polygon(lat, lon, cutout) for cutout in INLETS):
+        return False
+    return (point_in_polygon(lat, lon, MAINLAND)
+            or any(point_in_polygon(lat, lon, island) for island in ISLANDS))
+
+
+def main():
+    output_dir = Path("outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Exact requested increments: 2/126 degrees, inclusive endpoints.
+    latitudes = np.linspace(55.0, 53.0, 127)
+    longitudes = np.linspace(-131.0, -129.0, 127)
+
+    matrix = np.zeros((127, 127), dtype=np.uint8)
+    for row, lat in enumerate(latitudes):
+        for col, lon in enumerate(longitudes):
+            matrix[row, col] = int(is_land(float(lat), float(lon)))
+
+    with (output_dir / "candidate.csv").open(
+            "w", newline="", encoding="ascii") as csv_file:
+        writer = csv.writer(csv_file, lineterminator="\n")
+        writer.writerows(matrix.tolist())
+
+    # 0 maps to black water; 1 maps to white land.
+    image = Image.fromarray(matrix * 255, mode="L").convert("RGB")
+    image.save(output_dir / "candidate.png")
+    enlarged = image.resize((1016, 1016), resample=Image.Resampling.NEAREST)
+    enlarged.save(output_dir / "candidate_8x.png")
+
+    assert matrix.shape == (127, 127)
+    assert matrix.size == 16129
+    assert set(np.unique(matrix).tolist()) <= {0, 1}
+    assert image.size == (127, 127)
+    assert set(image.getdata()) <= {(0, 0, 0), (255, 255, 255)}
+    assert enlarged.size == (1016, 1016)
+
+
+if __name__ == "__main__":
+    main()
+```

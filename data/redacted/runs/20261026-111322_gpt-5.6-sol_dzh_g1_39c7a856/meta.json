@@ -1,0 +1,30 @@
+{
+  "run_id": "20261026-111322_gpt-5.6-sol_dzh_g1_39c7a856",
+  "channel": "C",
+  "batch_id": "batch-09",
+  "started_at": "2026-10-26T11:13:22+08:00",
+  "finished_at": "2026-10-26T11:13:43+08:00",
+  "duration_sec": 20.7,
+  "status": "failed",
+  "returncode": 200,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 2,
+  "request_retries": 0,
+  "model": "gpt-5.6-sol",
+  "model_display": "GPT 5.6 Sol",
+  "task": "dzh",
+  "task_label": "地中海 0.2°",
+  "group": 1,
+  "prompt_sha256": "ed60d2d0403da116ee920e35b57d8eca0509572e4331d15e0459b831ea2f9894",
+  "error": "RuntimeError: {\"type\": \"error\", \"sequence_number\": 0, \"code\": \"upstream_http2_stream_error\", \"message\": \"Upstream HTTP/2 stream failed\", \"param\": null}",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "last_message.txt": "runs/20261026-111322_gpt-5.6-sol_dzh_g1_39c7a856/last_message.txt"
+  }
+}

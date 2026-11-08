@@ -1,0 +1,30 @@
+{
+  "run_id": "20261024-122756_gpt-6-astra_hecate_g4_3bcf6a1d",
+  "channel": "OR",
+  "batch_id": "batch-02",
+  "started_at": "2026-10-24T12:27:56+08:00",
+  "finished_at": "2026-10-24T12:27:57+08:00",
+  "duration_sec": 0.5,
+  "status": "failed",
+  "returncode": 403,
+  "timed_out": false,
+  "early_complete": false,
+  "backend": "api-tools",
+  "transport": "direct",
+  "reasoning_effort": null,
+  "tool_calls": 0,
+  "request_retries": null,
+  "model": "openai/gpt-6-astra",
+  "model_display": "GPT 6 Astra",
+  "task": "hecate",
+  "task_label": "赫卡特海峡 2/126°",
+  "group": 4,
+  "prompt_sha256": "50313a41be43a3e640dd6e88e129b3b69da3437e0866b9b2019d4c880add1322",
+  "error": "HTTPError 403: Forbidden",
+  "score": null,
+  "map_metrics": null,
+  "validation": null,
+  "files": {
+    "response_error.txt": "runs/20261024-122756_gpt-6-astra_hecate_g4_3bcf6a1d/response_error.txt"
+  }
+}

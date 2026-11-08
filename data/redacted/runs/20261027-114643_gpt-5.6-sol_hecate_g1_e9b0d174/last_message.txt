@@ -1,0 +1,332 @@
+```python
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+
+# Knowledge-only reconstruction. All outlines below are manually authored
+# approximations; no external files, map services, or geographic databases
+# are read.
+N = 127
+STEP = 2.0 / (N - 1)
+
+LONS = -131.0 + np.arange(N) * STEP
+LATS = 55.0 - np.arange(N) * STEP
+X, Y = np.meshgrid(LONS, LATS)
+
+
+def polygon_mask(vertices):
+    """Return a point-in-polygon mask for a manually specified outline."""
+    inside = np.zeros((N, N), dtype=bool)
+    xj, yj = vertices[-1]
+
+    for xi, yi in vertices:
+        crossing = ((yi > Y) != (yj > Y))
+        denominator = yj - yi
+
+        if denominator == 0:
+            denominator = 1.0e-15
+
+        edge_x = (xj - xi) * (Y - yi) / denominator + xi
+        inside ^= crossing & (X < edge_x)
+        xj, yj = xi, yi
+
+    return inside
+
+
+def ellipse_mask(lon, lat, rx, ry, angle_degrees=0.0):
+    """Mask for a small hand-placed island or islet cluster."""
+    angle = np.deg2rad(angle_degrees)
+    dx = X - lon
+    dy = Y - lat
+
+    u = dx * np.cos(angle) + dy * np.sin(angle)
+    v = -dx * np.sin(angle) + dy * np.cos(angle)
+    return (u / rx) ** 2 + (v / ry) ** 2 <= 1.0
+
+
+land = np.zeros((N, N), dtype=bool)
+
+# Approximate outer mainland coast. The polygon is closed along the eastern
+# edge of the requested frame; geography outside the frame is not generated.
+mainland = [
+    (-129.96, 55.00),
+    (-129.99, 54.95),
+    (-130.03, 54.90),
+    (-129.98, 54.85),
+    (-129.91, 54.80),
+    (-129.94, 54.74),
+    (-129.86, 54.68),
+    (-129.84, 54.61),
+    (-129.77, 54.56),
+    (-129.70, 54.50),
+    (-129.74, 54.44),
+    (-129.65, 54.39),
+    (-129.69, 54.33),
+    (-129.60, 54.28),
+    (-129.64, 54.23),
+    (-129.57, 54.18),
+    (-129.58, 54.12),
+    (-129.49, 54.07),
+    (-129.47, 54.01),
+    (-129.40, 53.95),
+    (-129.37, 53.89),
+    (-129.30, 53.83),
+    (-129.27, 53.76),
+    (-129.20, 53.70),
+    (-129.18, 53.63),
+    (-129.11, 53.57),
+    (-129.08, 53.50),
+    (-129.02, 53.44),
+    (-129.00, 53.40),
+    (-129.00, 55.00),
+]
+mainland_mask = polygon_mask(mainland)
+
+# Major mainland inlets and estuaries, removed before adding offshore islands.
+mainland_inlets = [
+    [
+        (-130.02, 55.00),
+        (-129.84, 55.00),
+        (-129.86, 54.94),
+        (-129.75, 54.87),
+        (-129.65, 54.78),
+        (-129.70, 54.73),
+        (-129.82, 54.81),
+        (-129.94, 54.90),
+    ],
+    [
+        (-129.85, 54.58),
+        (-129.66, 54.55),
+        (-129.48, 54.47),
+        (-129.35, 54.42),
+        (-129.42, 54.37),
+        (-129.58, 54.43),
+        (-129.73, 54.49),
+        (-129.89, 54.51),
+    ],
+    [
+        (-129.74, 54.29),
+        (-129.54, 54.25),
+        (-129.32, 54.16),
+        (-129.00, 54.09),
+        (-129.00, 54.00),
+        (-129.25, 54.05),
+        (-129.48, 54.13),
+        (-129.69, 54.19),
+        (-129.82, 54.23),
+    ],
+    [
+        (-129.48, 53.94),
+        (-129.31, 53.89),
+        (-129.12, 53.78),
+        (-129.00, 53.75),
+        (-129.00, 53.66),
+        (-129.15, 53.71),
+        (-129.32, 53.80),
+        (-129.52, 53.86),
+    ],
+]
+for inlet in mainland_inlets:
+    mainland_mask &= ~polygon_mask(inlet)
+
+land |= mainland_mask
+
+# Northern coastal islands near the Dixon Entrance and Portland Inlet area.
+islands = [
+    # Eastern edge of Duke Island.
+    [
+        (-131.00, 55.00), (-130.78, 55.00), (-130.74, 54.96),
+        (-130.79, 54.91), (-130.91, 54.89), (-131.00, 54.91),
+    ],
+    # Wales Island.
+    [
+        (-130.69, 54.93), (-130.54, 54.96), (-130.42, 54.91),
+        (-130.38, 54.82), (-130.43, 54.72), (-130.53, 54.66),
+        (-130.64, 54.69), (-130.72, 54.77), (-130.74, 54.86),
+    ],
+    # Pearse Island.
+    [
+        (-130.34, 54.96), (-130.21, 54.97), (-130.12, 54.91),
+        (-130.09, 54.83), (-130.15, 54.76), (-130.25, 54.78),
+        (-130.32, 54.84),
+    ],
+    # Somerville and nearby land.
+    [
+        (-130.25, 54.72), (-130.13, 54.74), (-130.05, 54.68),
+        (-130.08, 54.59), (-130.18, 54.56), (-130.27, 54.61),
+    ],
+    # Dundas Island.
+    [
+        (-131.00, 54.69), (-130.91, 54.72), (-130.78, 54.69),
+        (-130.68, 54.61), (-130.67, 54.51), (-130.74, 54.43),
+        (-130.86, 54.40), (-130.97, 54.45), (-131.00, 54.51),
+    ],
+    # Baron Island.
+    [
+        (-130.64, 54.62), (-130.53, 54.63), (-130.47, 54.57),
+        (-130.49, 54.49), (-130.58, 54.47), (-130.65, 54.53),
+    ],
+    # Melville Island.
+    [
+        (-130.98, 54.43), (-130.85, 54.46), (-130.75, 54.42),
+        (-130.72, 54.34), (-130.79, 54.28), (-130.90, 54.29),
+        (-130.98, 54.35),
+    ],
+    # Prescott Island.
+    [
+        (-130.74, 54.47), (-130.64, 54.48), (-130.57, 54.43),
+        (-130.58, 54.36), (-130.67, 54.33), (-130.74, 54.38),
+    ],
+    # Digby Island.
+    [
+        (-130.56, 54.36), (-130.44, 54.39), (-130.37, 54.34),
+        (-130.38, 54.25), (-130.47, 54.21), (-130.55, 54.26),
+    ],
+    # Kaien Island.
+    [
+        (-130.39, 54.33), (-130.29, 54.36), (-130.20, 54.31),
+        (-130.19, 54.23), (-130.25, 54.17), (-130.34, 54.20),
+    ],
+    # Stephens Island.
+    [
+        (-130.86, 54.30), (-130.73, 54.32), (-130.62, 54.27),
+        (-130.58, 54.17), (-130.62, 54.06), (-130.72, 53.99),
+        (-130.82, 54.03), (-130.88, 54.13),
+    ],
+    # Porcher Island.
+    [
+        (-130.75, 54.13), (-130.60, 54.16), (-130.45, 54.11),
+        (-130.36, 54.01), (-130.37, 53.88), (-130.45, 53.78),
+        (-130.58, 53.75), (-130.70, 53.81), (-130.77, 53.92),
+    ],
+    # McCauley Island.
+    [
+        (-130.47, 53.85), (-130.35, 53.87), (-130.26, 53.80),
+        (-130.24, 53.68), (-130.30, 53.57), (-130.40, 53.55),
+        (-130.48, 53.64),
+    ],
+    # Banks Island.
+    [
+        (-130.91, 53.83), (-130.78, 53.86), (-130.65, 53.81),
+        (-130.57, 53.70), (-130.54, 53.56), (-130.58, 53.42),
+        (-130.68, 53.31), (-130.79, 53.32), (-130.87, 53.43),
+        (-130.92, 53.58),
+    ],
+    # Pitt Island.
+    [
+        (-130.20, 53.86), (-130.09, 53.88), (-129.98, 53.82),
+        (-129.91, 53.71), (-129.85, 53.60), (-129.77, 53.48),
+        (-129.72, 53.36), (-129.76, 53.26), (-129.85, 53.27),
+        (-129.94, 53.38), (-130.02, 53.50), (-130.12, 53.61),
+        (-130.20, 53.73),
+    ],
+    # Gil Island.
+    [
+        (-129.83, 53.39), (-129.70, 53.42), (-129.59, 53.35),
+        (-129.54, 53.23), (-129.58, 53.12), (-129.68, 53.08),
+        (-129.77, 53.15), (-129.83, 53.27),
+    ],
+    # Campania Island.
+    [
+        (-129.58, 53.28), (-129.47, 53.30), (-129.37, 53.23),
+        (-129.33, 53.11), (-129.37, 53.00), (-129.50, 53.00),
+        (-129.58, 53.09),
+    ],
+    # Northwestern portion of Princess Royal Island.
+    [
+        (-129.31, 53.66), (-129.18, 53.64), (-129.08, 53.56),
+        (-129.00, 53.51), (-129.00, 53.00), (-129.27, 53.00),
+        (-129.32, 53.09), (-129.29, 53.20), (-129.34, 53.31),
+        (-129.29, 53.42),
+    ],
+    # Estevan group at the southern edge.
+    [
+        (-129.83, 53.13), (-129.72, 53.15), (-129.64, 53.09),
+        (-129.64, 53.00), (-129.82, 53.00), (-129.87, 53.06),
+    ],
+]
+
+for island in islands:
+    land |= polygon_mask(island)
+
+# Smaller named/unnamed coastal islands and reef clusters. These remain
+# simple point rules rather than smoothed or post-processed coastlines.
+small_islands = [
+    (-130.38, 54.66, 0.045, 0.070, -18),
+    (-130.48, 54.52, 0.035, 0.052, 22),
+    (-130.32, 54.48, 0.032, 0.055, -28),
+    (-130.18, 54.51, 0.026, 0.043, 8),
+    (-130.98, 54.32, 0.030, 0.045, 15),
+    (-130.63, 54.34, 0.026, 0.040, -15),
+    (-130.52, 54.18, 0.035, 0.060, -25),
+    (-130.93, 54.08, 0.032, 0.055, 20),
+    (-130.31, 54.08, 0.028, 0.046, 0),
+    (-130.86, 53.94, 0.031, 0.050, -12),
+    (-130.27, 53.93, 0.025, 0.042, 24),
+    (-130.97, 53.73, 0.026, 0.043, 5),
+    (-130.52, 53.61, 0.022, 0.039, -20),
+    (-130.35, 53.47, 0.031, 0.060, -18),
+    (-130.19, 53.40, 0.024, 0.043, 25),
+    (-130.04, 53.24, 0.025, 0.047, -12),
+    (-129.90, 53.18, 0.022, 0.038, 15),
+    (-129.61, 53.46, 0.026, 0.045, -22),
+    (-129.47, 53.39, 0.023, 0.039, 12),
+    (-129.92, 53.04, 0.027, 0.043, -8),
+    (-129.56, 53.02, 0.020, 0.032, 20),
+]
+
+for parameters in small_islands:
+    land |= ellipse_mask(*parameters)
+
+matrix = land.astype(np.uint8)
+
+# Write and validate the requested outputs.
+output_dir = Path.cwd() / "outputs"
+output_dir.mkdir(parents=True, exist_ok=True)
+
+csv_path = output_dir / "candidate.csv"
+png_path = output_dir / "candidate.png"
+large_png_path = output_dir / "candidate_8x.png"
+
+np.savetxt(csv_path, matrix, fmt="%d", delimiter=",")
+
+source_image = Image.fromarray(matrix * 255, mode="L")
+source_image.save(png_path)
+
+try:
+    nearest = Image.Resampling.NEAREST
+except AttributeError:
+    nearest = Image.NEAREST
+
+large_image = source_image.resize((N * 8, N * 8), resample=nearest)
+large_image.save(large_png_path)
+
+# Internal validation: dimensions, values, monochrome pixels, and exact
+# nearest-neighbor 8x replication.
+assert matrix.shape == (127, 127)
+assert matrix.size == 16129
+assert set(np.unique(matrix)).issubset({0, 1})
+assert source_image.size == (127, 127)
+assert large_image.size == (1016, 1016)
+assert set(source_image.getdata()).issubset({0, 255})
+assert set(large_image.getdata()).issubset({0, 255})
+
+large_array = np.asarray(large_image)
+expected_large = np.repeat(np.repeat(matrix * 255, 8, axis=0), 8, axis=1)
+assert np.array_equal(large_array, expected_large)
+
+with csv_path.open("r", encoding="utf-8") as csv_file:
+    rows = [line.rstrip("\n").split(",") for line in csv_file]
+
+assert len(rows) == 127
+assert all(len(row) == 127 for row in rows)
+assert all(value in {"0", "1"} for row in rows for value in row)
+
+print(f"Wrote {csv_path}")
+print(f"Wrote {png_path}")
+print(f"Wrote {large_png_path}")
+```
+
+依赖：Python 3、NumPy、Pillow。脚本使用手工编写的近似海岸和岛屿轮廓，统一对全部采样坐标执行点包含判定，并非对每个点进行独立语言模型推理。
