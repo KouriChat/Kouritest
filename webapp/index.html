@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>地图海陆重建 · 网页评测</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <h1>地图海陆重建 · 网页评测</h1>
+  <p class="lead">Web版地图测试（<strong>基于海陆栅格重建的大语言模型行为偏移评测方法研究</strong>，虹语织人工智能与大模型研究实验室 2026）</p>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>1. 接口设置</h2>
+    <div class="grid">
+      <label class="field span2">接口地址
+        <input id="baseUrl" type="text" spellcheck="false" autocomplete="off"
+               placeholder="https://api.example.com/v1">
+      </label>
+      <label class="field span2">API Key
+        <span class="inline">
+          <input id="apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="sk-...">
+          <button id="toggleKey" class="mini" type="button">显示</button>
+        </span>
+      </label>
+      <label class="field">模型 ID
+        <input id="modelId" type="text" spellcheck="false" autocomplete="off"
+               placeholder="provider/model-name">
+      </label>
+      <label class="field">接口类型
+        <select id="wire">
+          <option value="chat">Chat Completions</option>
+          <option value="responses">Responses API</option>
+        </select>
+      </label>
+      <label class="field">请求方式
+        <select id="transport">
+          <option value="direct">浏览器直连</option>
+          <option value="proxy">本地 Flask 代理</option>
+        </select>
+      </label>
+      <label class="field">代理地址
+        <input id="proxyUrl" type="text" spellcheck="false" autocomplete="off"
+               placeholder="">
+      </label>
+      <label class="field">最大输出 tokens
+        <input id="maxTokens" type="number" min="256" step="256" value="30000">
+      </label>
+      <label class="field">tokens 参数名
+        <select id="tokenField">
+          <option value="max_tokens">max_tokens</option>
+          <option value="max_completion_tokens">max_completion_tokens</option>
+        </select>
+      </label>
+      <label class="field">推理强度
+        <select id="reasoning">
+          <option value="">不发送</option>
+          <option value="low">low</option>
+          <option value="medium">medium</option>
+          <option value="high">high</option>
+        </select>
+      </label>
+      <label class="field">超时（分钟）
+        <input id="timeoutMin" type="number" min="1" max="120" step="1" value="15">
+      </label>
+      <label class="field check">
+        <input id="stream" type="checkbox" checked> 流式接收
+      </label>
+      <label class="field check">
+        <input id="rememberKey" type="checkbox"> 在本机浏览器记住 Key
+      </label>
+    </div>
+    <div class="row">
+      <button id="saveSettings" type="button">保存设置</button>
+      <button id="testConn" type="button" class="secondary">测试连接</button>
+      <span id="connStatus" class="status"></span>
+    </div>
+    <p class="hint">浏览器直连可能会受到服务端 CORS 限制。若报“网络请求失败”，请改用本地 Flask 代理（见 README）。</p>
+  </section>
+
+  <section class="panel">
+    <h2>2. 任务</h2>
+    <div id="taskList" class="tasks"></div>
+    <div class="row wrap">
+      <label class="field small">每组重复
+        <input id="groups" type="number" min="1" max="9" step="1" value="1">
+      </label>
+      <label class="field small">矩阵提交格式
+        <select id="submitFormat">
+          <option value="compact">连续 0/1（省 token）</option>
+          <option value="csv">逗号分隔 CSV</option>
+        </select>
+      </label>
+      <label class="field small">查看提示词
+        <select id="promptTask"></select>
+      </label>
+      <button id="showPrompt" type="button" class="secondary">显示</button>
+    </div>
+    <pre id="promptView" class="prompt" hidden></pre>
+    <div class="row">
+      <button id="startRun" type="button">开始测试</button>
+      <button id="stopRun" type="button" class="secondary" disabled>停止</button>
+      <span id="progressText" class="status"></span>
+    </div>
+    <div class="bar"><div id="progressBar"></div></div>
+    <div id="logBox" class="log" aria-live="polite"></div>
+  </section>
+
+  <section class="panel">
+    <h2>3. 结果</h2>
+    <div class="tablewrap">
+      <table id="resultTable">
+        <thead>
+          <tr>
+            <th>地图</th><th>组</th><th>状态</th><th>得分</th><th>满分</th>
+            <th>准确率</th><th>错格</th><th>虚报</th><th>漏报</th><th>方向</th><th>用时</th>
+          </tr>
+        </thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+    </div>
+    <div class="row">
+      <button id="downloadJson" type="button" class="secondary" disabled>下载本批结果 JSON</button>
+      <span id="resultCount" class="status"></span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>4. 预览</h2>
+    <p id="previewTitle" class="hint">您可在结果表里点一行查看；也可在下方手动评分。</p>
+    <div class="previews">
+      <figure>
+        <canvas id="candCanvas" width="180" height="90"></canvas>
+        <figcaption>模型判定（白=陆地，黑=水域）</figcaption>
+      </figure>
+      <figure>
+        <canvas id="diffCanvas" width="180" height="90"></canvas>
+        <figcaption>误差（红=虚报陆地，蓝=漏报陆地，灰=判对的陆地）</figcaption>
+      </figure>
+    </div>
+    <div id="metricsBox" class="metrics"></div>
+    <div class="row">
+      <button id="downloadMatrix" type="button" class="secondary" disabled>下载矩阵 CSV</button>
+      <button id="downloadDiff" type="button" class="secondary" disabled>下载误差图 PNG</button>
+      <button id="downloadRaw" type="button" class="secondary" disabled>下载原始回复 TXT</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>5. 手动评分</h2>
+    <p class="hint">不调用接口，可上传PNG或直接上传01矩阵。</p>
+    <div class="row wrap">
+      <label class="field small">对照地图
+        <select id="manualTask"></select>
+      </label>
+      <label class="field small">上传 PNG
+        <input id="manualFile" type="file" accept="image/png,image/gif,image/jpeg">
+      </label>
+      <button id="manualScore" type="button">评分</button>
+      <span id="manualStatus" class="status"></span>
+    </div>
+    <textarea id="manualText" rows="6" spellcheck="false"
+      placeholder="粘贴矩阵文本：每行 0/1，可用逗号分隔或写成连续字符；也允许整体带 ``` 代码块。"></textarea>
+  </section>
+</main>
+
+<footer>
+  <p>评分口径与主脚本一致：错 1 格扣 1 分；区域图同时按 16,200 格归一化。PNG 解码为灰度后以 127.5 为阈值二值化。</p>
+</footer>
+
+<script src="js/assets-data.js"></script>
+<script src="js/tasks.js"></script>
+<script src="js/score.js"></script>
+<script src="js/render.js"></script>
+<script src="js/image.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

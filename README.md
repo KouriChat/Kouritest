@@ -18,6 +18,7 @@
 | `paper_framework/refs.bib` | 参考文献 |
 | `paper_framework/supplement_20261105/` | 补充材料的核验脚本与核验结果 |
 | `data/supplement_20261105/runs/` | 补充材料中逐次运行的代表性产物（见下） |
+| `webapp/` | 网页版评测器：同题目、同参照矩阵、同评分口径的纯前端实现；无需后端即可运行，另附可选的 Flask 中继 |
 
 
 ## 完整脱敏实验数据
@@ -28,6 +29,24 @@
 - `data/redacted/tables/runs.csv`：1,073 行的运行级总表
 - `data/redacted/manifest.json`：机器可读索引
 - `data/redacted/checksums.sha256`：全部文件的 SHA-256
+
+## 网页版评测器
+
+`webapp/` 是主脚本的网页对应版本，题目、参照矩阵与评分口径完全一致，供需要图形界面时使用。
+
+- 直接双击 `webapp/index.html` 即可运行：所有请求与评分都在浏览器 JS 内完成，**不需要后端**；
+- 若供应商接口不允许浏览器跨域（CORS），可选用附带的中继：`pip install flask && python webapp/server.py`；
+- 页面支持填写接口地址、API Key 与模型 ID（不外传、不写入仓库），可选 Chat Completions / Responses API、直连 / 代理、流式 / 非流式；
+- 六张地图可多选、可设每组重复次数；结果给出得分、准确率、HSS、边界 F1@1、虚报/漏报格数，并可导出矩阵 CSV、误差图与原始回复 JSON；
+- 另含手动复核入口：粘贴矩阵文本或上传 PNG（含 8× 最近邻放大）立即按同一口径评分。
+
+详见 `webapp/README.md`。自测：
+
+```powershell
+node webapp/tools/build_assets.js    # 由 prompt/refs 重新生成内嵌资源
+node webapp/tests/score.test.js      # 评分核心单元测试
+python webapp/tests/server.test.py   # 可选中继的单元测试
+```
 
 ## 环境安装
 
