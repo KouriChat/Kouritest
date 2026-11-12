@@ -2,7 +2,7 @@
 
 本仓库是论文《基于海陆栅格重建的大语言模型行为偏移评测方法研究》的测试脚本与公开数据。
 
-仓库地址：<https://git.kourichat.com/yoshino/Kouritest>
+仓库地址：<[Kouritest](https://github.com/KouriChat/Kouritest)>
 
 论文用离线海陆栅格重建测量同一声明模型在不同服务条件下的输出偏移。模型写脚本生成二值海陆图，评价器读取交付文件并计算空间指标。整套流程在个人计算机上可以跑完。
 
@@ -348,6 +348,6 @@ python paper_framework/supplement_20261105/verify_supplement.py --source data/su
 
 论文使用的测试脚本、参照矩阵、模型输出归档与分析表都在本仓库。公开地址：
 
-<https://git.kourichat.com/yoshino/Kouritest>
+<Kouritest](https://github.com/KouriChat/Kouritest)>
 
 引用格式以论文参考文献为准。
